@@ -12,9 +12,9 @@ argument as a command line argument
 try:
 	dates = sys.argv[1]
 	listDates = dates.split('\n')
-	xfConsumptionRegex = re.compile(r'[\d,]+$')
-
-	xfConsumptionWeekly = [int(re.sub(r',', '', re.search(xfConsumptionRegex, i).group())) for i in listDates]
+	xfConsumptionRegex = re.compile(r'(?P<xfConsumption>[\d,]+$)')
+    # Only the last digits are grouped, the comma is removed, and converted to int
+	xfConsumptionWeekly = [int(re.sub(r',', '', re.search(xfConsumptionRegex, i).group('xfConsumption'))) for i in listDates]
 
 	sumXFConsumption = sum(xfConsumptionWeekly)
 
