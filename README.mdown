@@ -1,0 +1,5 @@
+Dynatrace Resources
+===================
+
+This repository contains useful scripts for automation
+of task for the different Dynatrace clients that I manage
