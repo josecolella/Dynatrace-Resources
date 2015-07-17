@@ -1,10 +1,9 @@
 import sys
 import re
-
 """
 To do:
 	- Add web interaction to get the string argument
-directly from web instead of having to manually put the 
+directly from web instead of having to manually put the
 argument as a command line argument
 
 """
