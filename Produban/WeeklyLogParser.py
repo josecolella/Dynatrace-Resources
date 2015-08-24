@@ -1,5 +1,8 @@
 import sys
 import re
+import pprint
+
+
 """
 To do:
 	- Add web interaction to get the string argument
@@ -8,21 +11,28 @@ argument as a command line argument
 
 """
 
-try:
-	dates = sys.argv[1]
+def getSumXFConsumption(dates):
 	listDates = dates.split('\n')
 	xfConsumptionRegex = re.compile(r'(?P<xfConsumption>[\d,]+$)')
-    # Only the last digits are grouped, the comma is removed, and converted to int
+   	# Only the last digits are grouped, the comma is removed, and converted to int
 	xfConsumptionWeekly = [int(re.sub(r',', '', re.search(xfConsumptionRegex, i).group('xfConsumption'))) for i in listDates]
 
 	sumXFConsumption = sum(xfConsumptionWeekly)
+	return {
+		"list": xfConsumptionWeekly,
+		"sum": sumXFConsumption
+	}
 
-#print("List of Dates")
-#print(listDates)
+
+try:
+	pp = pprint.PrettyPrinter()
+	dates = sys.argv[1]
+	consumptionStruct = getSumXFConsumption(dates)
+	
 	print("XF Consumption List")
-	print(xfConsumptionWeekly)
+	print(consumptionStruct["list"])
 	print("Sum of XF Consumption")
-	print(sumXFConsumption)
+	print(consumptionStruct["sum"])
 except IndexError:
 	print("""At least one argument required.
 Example:
