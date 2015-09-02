@@ -6,6 +6,9 @@ from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 
+logging.basicConfig(level=logging.DEBUG)
+logger = logging.getLogger(__name__)
+
 
 class DynatracePortal(object):
     homePage = "https://www.gomezapm.com"
@@ -42,38 +45,38 @@ class DynatracePortal(object):
         """
         logging.debug("Fetching Dynatrace Login Page")
         self.driver.get(DynatracePortal.homePage)
-        print("Finish fetching page")
+        logging.debug("Finish fetching page")
         usernameInput = self.driver.find_element_by_id(
             DynatracePortal.usernameInputId)
         passwordInput = self.driver.find_element_by_id(
             DynatracePortal.passwordInputId)
-        print("Sending username credentials")
+        logging.debug("Sending username credentials")
         usernameInput.send_keys(self.username)
-        print("Sending password credentials")
+        logging.debug("Sending password credentials")
         passwordInput.send_keys(self.password)
         submitButton = self.driver.find_element_by_id(
             DynatracePortal.submitButtonId)
-        print("Sending button click")
+        logging.debug("Sending button click")
         submitButton.click()
-        print("Waiting for page to load")
+        logging.debug("Waiting for page to load")
         try:
             WebDriverWait(self.driver, 5).until(
                 EC.presence_of_element_located((By.ID, DynatracePortal.monitorAnalyzeId)))
         except Exception:
-            print("The page could not load")
+            logging.warning("The page could not load")
 
     def getCharts(self):
         """
         """
-        print("Clicking Monitor & Analyze Tab")
+        logging.debug("Clicking Monitor & Analyze Tab")
         self.driver.find_element_by_id(
             DynatracePortal.monitorAnalyzeId).click()
         self.driver.save_screenshot('here.png')
-        print("Getting chart link element")
+        logging.debug("Getting chart link element")
         chartLink = self.driver.find_element_by_id(
             DynatracePortal.interactiveChartId)
         href = chartLink.get_attribute("href")
-        print(href)
+        logging.debug(href)
         self.driver.get(href)
         # try:
         self.driver.save_screenshot('here2.png')
@@ -83,27 +86,27 @@ class DynatracePortal(object):
             # Switch to iframe in order to obtain DOM elements
             self.driver.switch_to_frame(DynatracePortal.iframeName)
         except Exception:
-            print("Element could not be found within the time frame")
-        print("Sleeping for 5 seconds")
+            logging.warn("Element could not be found within the time frame")
+        logging.debug("Sleeping for 5 seconds")
         time.sleep(5)
         self.driver.save_screenshot('here3.png')
         test = self.driver.find_element_by_id("wrapper").get_attribute("class")
-        print("Class is: {}".format(test))
+        logging.debug("Class is: {}".format(test))
         test2 = self.driver.find_element_by_class_name(
             "dataTable").get_attribute("style")
-        print("Style is: {}".format(test2))
+        logging.debug("Style is: {}".format(test2))
         test3 = self.driver.find_elements_by_class_name(
             DynatracePortal.chartsClass)
-        print("Charts are: {}".format(test3))
-        test3classes = filter(lambda node: DynatracePortal.chartsClass in node.get_attribute("class"), test3)
-        print("Classes are: {}".format([elem.text for elem in test3classes]))
-        # self.driver.save_screenshot('charts6.png')
-            # THe different tests that are present for the account
-        # except Exception:
-            # self.driver.save_screenshot('charts5.png')
-            # print("The page could not load")
-        # tests = [elem for elem in self.driver.find_elements_by_class_name(DynatracePortal.chartsClass)]
-        # print(tests)
+        logging.debug("Charts are: {}".format(test3))
+        test3classes = list(filter(lambda node: DynatracePortal.chartsClass in node.get_attribute(
+            "class") and node.text != '', test3))
+        logging.debug("Classes are: {}".format([elem.text for elem in test3classes]))
+        # Not moving to chart. Fails on the click
+        # logging.debug("\nClicking on first chart: {}\n".format(
+        #     test3classes[0].get_attribute("class")))
+        # test3classes[0].click()
+        # logging.debug("Saving screenshot")
+        # self.driver.save_screenshot('here4.png')
 
     def logout(self):
         pass
