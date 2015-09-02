@@ -1,16 +1,16 @@
 from __future__ import print_function
-from selenium import webdriver
-import logging
-import time
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
+import logging
+import time
+import Portal
 
 logging.basicConfig(level=logging.DEBUG)
 logger = logging.getLogger(__name__)
 
 
-class DynatracePortal(object):
+class DynatracePortal(Portal.AbstractPortal):
     homePage = "https://www.gomezapm.com"
     usernameInputId = "username"
     passwordInputId = "password"
@@ -28,16 +28,8 @@ class DynatracePortal(object):
         username: string
         password: string
         """
-        # assert type(username) == "string", print("username is a string")
-        # assert type(password) == "string", print("password is a string")
-        # Make constant
-        self.username = username
-        # Make constant
-        self.password = password
-        self.driver = webdriver.PhantomJS(service_log_path="/dev/null")
+        super(DynatracePortal, self).__init__()
         print("Initialized PhantomJS driver")
-        self.driver.maximize_window()
-        self.windowSize = self.driver.get_window_size()
 
     def login(self):
         """
@@ -113,6 +105,3 @@ class DynatracePortal(object):
         # signOutButton = self.driver.find_element_by_id(
         #     DynatracePortal.logoutId)
         # signOutButton.click()
-
-    def close(self):
-        self.driver.quit()
