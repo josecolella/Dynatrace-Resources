@@ -3,3 +3,13 @@ Dynatrace Resources
 
 This repository contains useful scripts for automation
 of task for the different Dynatrace clients that I manage
+
+#Dynatrace SaaS
+
+Contains code that interfaces with the REST API for SaaS as well as Portal automation for report building
+
+
+
+
+
+
