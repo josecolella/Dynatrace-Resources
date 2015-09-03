@@ -131,9 +131,9 @@ class AbstractPortal(object):
 class GPNPortal(AbstractPortal):
 
     homePage = "https://www.gomeznetworks.com/index.asp?g=1"
-    usernameInputName = "username"
-    passwordInputName = "pwd"
-    submitButtonClass = "Login-Button"
+    usernameInputIdentifier = "username"
+    passwordInputIdentifier = "pwd"
+    submitButtonIdentifier = "Login-Button"
     tableId = "ctl00_Content_XFSummaryTable"
     endOfMonthProjectionIdentifier = "ctl00_Content_XFProjectedUsage"
 
@@ -143,15 +143,15 @@ class GPNPortal(AbstractPortal):
         logging.debug("Finish fetching page")
         self.driver.save_screenshot('gpn-portal.png')
         usernameInput = self.driver.find_element_by_name(
-            GPNPortal.usernameInputName)
+            GPNPortal.usernameInputIdentifier)
         passwordInput = self.driver.find_element_by_name(
-            GPNPortal.passwordInputName)
+            GPNPortal.passwordInputIdentifier)
         logging.debug("Sending username credentials")
         usernameInput.send_keys(self.username)
         logging.debug("Sending password credentials")
         passwordInput.send_keys(self.password)
         submitButton = self.driver.find_element_by_class_name(
-            GPNPortal.submitButtonClass)
+            GPNPortal.submitButtonIdentifier)
         logging.debug("Sending button click")
         submitButton.click()
         logging.debug("Waiting for page to load")
@@ -164,9 +164,6 @@ class GPNPortal(AbstractPortal):
         self.driver.save_screenshot("gpn2.png")
 
     def getXFConsumption(self, startDate=0, endDate=0):
-        # Open a new tab TODO
-        body = self.driver.find_element_by_tag_name("body")
-        body.send_keys(Keys.COMMAND + 't')
         xfConsumptionPage = "https://www.gomeznetworks.com/reports/flexReport.aspx?x=&startdate=2015/8/1&enddate=2015/8/30"
         self.driver.get(xfConsumptionPage)
         try:
@@ -274,6 +271,15 @@ class DynatracePortal(AbstractPortal):
         print("Clicking on element")
         print(test3classes[0].click())
         # logging.debug("Saving screenshot")
+        try:
+            WebDriverWait(self.driver, 30).until(
+                EC.visibility_of_element_located((By.ID, "apmframe")))
+            # Switch to iframe in order to obtain DOM elements
+            self.driver.switch_to_frame(DynatracePortal.iframeName)
+            WebDriverWait(self.driver, 10).until(
+                EC.visibility_of_element_located((By.TAG_NAME, "svg")))
+        except Exception:
+            logging.warn("Element could not be found within the time frame")
         time.sleep(25)
         self.driver.save_screenshot('here5{}.png'.format(index))
 
