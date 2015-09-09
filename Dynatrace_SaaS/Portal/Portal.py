@@ -6,9 +6,11 @@ from selenium.webdriver.support import expected_conditions as EC
 from selenium.webdriver.common.keys import Keys
 from abc import ABCMeta
 from abc import abstractmethod
+import datetime
 import logging
 import time
 import re
+import os
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -106,11 +108,37 @@ class AbstractPortal(object):
     def __init__(self, username, password):
         assert type(username) == str, print('username is a string')
         assert type(password) == str, print('password is a string')
-        self.driver = webdriver.PhantomJS(service_log_path="/dev/null")
+        # If the operating system is windows or *nix.
+        self.osNull = {
+            "nt": "NUL",
+            "posix": "/dev/null"
+        }
+        self.driver = webdriver.PhantomJS(
+            service_log_path=self.osNull[os.name])
         self.driver.maximize_window()
         self.windowSize = self.driver.get_window_size()
         self._username = username
         self._password = password
+
+    @property
+    @abstractmethod
+    def homePage(self):
+        pass
+
+    @property
+    @abstractmethod
+    def usernameInputIdentifier(self):
+        pass
+
+    @property
+    @abstractmethod
+    def passwordInputIdentifier(self):
+        pass
+
+    @property
+    @abstractmethod
+    def submitButtonIdentifier(self):
+        pass
 
     @property
     def username(self):
@@ -120,9 +148,24 @@ class AbstractPortal(object):
     def password(self):
         return self._password
 
-    @abstractmethod
     def login(self):
-        pass
+        logging.debug("Fetching Dynatrace Login Page")
+        self.driver.get(self.homePage)
+        logging.debug("Finish fetching page")
+        self.driver.save_screenshot('homePage.png')
+        usernameInput = self.driver.find_element_by_name(
+            self.usernameInputIdentifier)
+        passwordInput = self.driver.find_element_by_name(
+            self.passwordInputIdentifier)
+        logging.debug("Sending username credentials")
+        usernameInput.send_keys(self.username)
+        logging.debug("Sending password credentials")
+        passwordInput.send_keys(self.password)
+        submitButton = self.driver.find_element_by_class_name(
+            self.submitButtonIdentifier)
+        logging.debug("Sending button click")
+        submitButton.click()
+        logging.debug("Waiting for page to load")
 
     def close(self):
         self.driver.quit()
@@ -130,31 +173,31 @@ class AbstractPortal(object):
 
 class GPNPortal(AbstractPortal):
 
-    homePage = "https://www.gomeznetworks.com/index.asp?g=1"
-    usernameInputIdentifier = "username"
-    passwordInputIdentifier = "pwd"
-    submitButtonIdentifier = "Login-Button"
     tableId = "ctl00_Content_XFSummaryTable"
     endOfMonthProjectionIdentifier = "ctl00_Content_XFProjectedUsage"
 
+    def __init__(self, username, password):
+        super(GPNPortal, self).__init__(self.username, self.password)
+        self.accountsList = []
+
+    @property
+    def homePage(self):
+        return "https://www.gomeznetworks.com/index.asp?g=1"
+
+    @property
+    def usernameInputIdentifier(self):
+        return "username"
+
+    @property
+    def passwordInputIdentifier(self):
+        return "pwd"
+
+    @property
+    def submitButtonIdentifier(self):
+        return "Login-Button"
+
     def login(self):
-        logging.debug("Fetching Dynatrace Login Page")
-        self.driver.get(GPNPortal.homePage)
-        logging.debug("Finish fetching page")
-        self.driver.save_screenshot('gpn-portal.png')
-        usernameInput = self.driver.find_element_by_name(
-            GPNPortal.usernameInputIdentifier)
-        passwordInput = self.driver.find_element_by_name(
-            GPNPortal.passwordInputIdentifier)
-        logging.debug("Sending username credentials")
-        usernameInput.send_keys(self.username)
-        logging.debug("Sending password credentials")
-        passwordInput.send_keys(self.password)
-        submitButton = self.driver.find_element_by_class_name(
-            GPNPortal.submitButtonIdentifier)
-        logging.debug("Sending button click")
-        submitButton.click()
-        logging.debug("Waiting for page to load")
+        super(GPNPortal, self).login()
         try:
             WebDriverWait(self.driver, 30).until(
                 EC.visibility_of_element_located((By.CLASS_NAME, "theme")))
@@ -163,8 +206,16 @@ class GPNPortal(AbstractPortal):
         time.sleep(5)
         self.driver.save_screenshot("gpn2.png")
 
-    def getXFConsumption(self, startDate=0, endDate=0):
-        xfConsumptionPage = "https://www.gomeznetworks.com/reports/flexReport.aspx?x=&startdate=2015/8/1&enddate=2015/8/30"
+    def getXFConsumption(self, startDay=1, startMonth=datetime.date.today().month, endDay=31, endMonth=datetime.date.today().month):
+        currentYear = datetime.date.today().year
+        xfConsumptionPage = "https://www.gomeznetworks.com/reports/flexReport.aspx?x=&startdate={startYear}/{startMonth}/{startDay}&enddate={endYear}/{endMonth}/{endDay}".format(
+            startYear=currentYear,
+            startMonth=startMonth,
+            startDay=startDay,
+            endYear=currentYear,
+            endMonth=endMonth,
+            endDay=endDay
+        )
         self.driver.get(xfConsumptionPage)
         try:
             WebDriverWait(self.driver, 30).until(
@@ -177,19 +228,22 @@ class GPNPortal(AbstractPortal):
         summaryTable = self.driver.find_element_by_id(GPNPortal.tableId)
         xfMeasurementHtmlTable = summaryTable.find_elements_by_tag_name("td")
         xfConsumption.setXFTable(xfMeasurementHtmlTable)
-        xfconsumption.setMonthlyOffset()
-        xfconsumption.setSumXFConsumption(1, 31)
+        xfConsumption.setMonthlyOffset()
+        xfConsumption.setSumXFConsumption(1, 31)
         return xfConsumption
 
-    def setAccounts(self):
+    def addSubAccounts(self, url):
+        # TODO: needs to open tabs with url and close. window.close can only be used with window.open
+        # self.accountsList.append(url)
+        # self.driver
         # Button needs to be clicked in order to see other accounts
-        self.driver.find_element_by_id("identity-btn-name").click()
-        accountList = self.driver.find_element_by_id("divIdentityList")
-        # Everything but the first and last element as the first element is the tr -> Switch accounts and the last tr
-        # has an empty name
-        accountListRows = accountList.find_elements_by_tag_name("tr")[1:-1]
-        self.accounts = [{'name': accountListRow.text, 'node': accountListRow}
-                         for accountListRow in accountListRows]
+        # self.driver.find_element_by_id("identity-btn-name").click()
+        # accountList = self.driver.find_element_by_id("divIdentityList")
+        # # Everything but the first and last element as the first element is the tr -> Switch accounts and the last tr
+        # # has an empty name
+        # accountListRows = accountList.find_elements_by_tag_name("tr")[1:-1]
+        # self.accounts = [{'name': accountListRow.text, 'node': accountListRow}
+                         # for accountListRow in accountListRows]
 
 
 class DynatracePortal(AbstractPortal):
@@ -230,7 +284,7 @@ class DynatracePortal(AbstractPortal):
         except Exception:
             logging.warning("The page could not load")
 
-    def getCharts(self,index = 0, upper = 3):
+    def getCharts(self, index=0, upper=3):
         """
         """
         logging.debug("Clicking Monitor & Analyze Tab")
@@ -282,8 +336,6 @@ class DynatracePortal(AbstractPortal):
             logging.warn("Element could not be found within the time frame")
         time.sleep(25)
         self.driver.save_screenshot('here5{}.png'.format(index))
-
-
 
     def logout(self):
         pass
