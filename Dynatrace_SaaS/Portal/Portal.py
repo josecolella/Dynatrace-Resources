@@ -161,8 +161,7 @@ class AbstractPortal(object):
         usernameInput.send_keys(self.username)
         logging.debug("Sending password credentials")
         passwordInput.send_keys(self.password)
-        submitButton = self.driver.find_element_by_class_name(
-            self.submitButtonIdentifier)
+        submitButton = self.driver.find_element_by_id(self.submitButtonIdentifier)
         logging.debug("Sending button click")
         submitButton.click()
         logging.debug("Waiting for page to load")
@@ -177,7 +176,7 @@ class GPNPortal(AbstractPortal):
     endOfMonthProjectionIdentifier = "ctl00_Content_XFProjectedUsage"
 
     def __init__(self, username, password):
-        super(GPNPortal, self).__init__(self.username, self.password)
+        super(GPNPortal, self).__init__(username, password)
         self.accountsList = []
 
     @property
@@ -194,7 +193,7 @@ class GPNPortal(AbstractPortal):
 
     @property
     def submitButtonIdentifier(self):
-        return "Login-Button"
+        return "loginbutton"
 
     def login(self):
         super(GPNPortal, self).login()
@@ -233,14 +232,15 @@ class GPNPortal(AbstractPortal):
         return xfConsumption
 
     def addSubAccounts(self, url):
+        pass
         # TODO: needs to open tabs with url and close. window.close can only be used with window.open
         # self.accountsList.append(url)
         # self.driver
         # Button needs to be clicked in order to see other accounts
         # self.driver.find_element_by_id("identity-btn-name").click()
         # accountList = self.driver.find_element_by_id("divIdentityList")
-        # # Everything but the first and last element as the first element is the tr -> Switch accounts and the last tr
-        # # has an empty name
+        # Everything but the first and last element as the first element is the tr -> Switch accounts and the last tr
+        # has an empty name
         # accountListRows = accountList.find_elements_by_tag_name("tr")[1:-1]
         # self.accounts = [{'name': accountListRow.text, 'node': accountListRow}
                          # for accountListRow in accountListRows]
@@ -248,41 +248,39 @@ class GPNPortal(AbstractPortal):
 
 class DynatracePortal(AbstractPortal):
 
-    homePage = "https://www.gomezapm.com"
-    usernameInputId = "username"
-    passwordInputId = "password"
-    submitButtonId = "signIn"
     monitorAnalyzeId = "monitoranalyze"
     interactiveChartId = "apmInteractiveChart"
     chartsClass = "apm-btn-link"
     logoutId = "sign-out"
     iframeName = "apmframe"
 
+    @property
+    def homePage(self):
+        return "https://www.gomezapm.com"
+
+    @property
+    def usernameInputIdentifier(self):
+        return "username"
+
+    @property
+    def passwordInputIdentifier(self):
+        return "pw"
+
+    @property
+    def submitButtonIdentifier(self):
+        return "signIn"
+
     def login(self):
         """
         login()
         """
-        logging.debug("Fetching Dynatrace Login Page")
-        self.driver.get(DynatracePortal.homePage)
-        logging.debug("Finish fetching page")
-        usernameInput = self.driver.find_element_by_id(
-            DynatracePortal.usernameInputId)
-        passwordInput = self.driver.find_element_by_id(
-            DynatracePortal.passwordInputId)
-        logging.debug("Sending username credentials")
-        usernameInput.send_keys(self.username)
-        logging.debug("Sending password credentials")
-        passwordInput.send_keys(self.password)
-        submitButton = self.driver.find_element_by_id(
-            DynatracePortal.submitButtonId)
-        logging.debug("Sending button click")
-        submitButton.click()
-        logging.debug("Waiting for page to load")
+        super(DynatracePortal, self).login()
         try:
             WebDriverWait(self.driver, 5).until(
                 EC.presence_of_element_located((By.ID, DynatracePortal.monitorAnalyzeId)))
         except Exception:
             logging.warning("The page could not load")
+        self.driver.save_screenshot("Portal.png")
 
     def getCharts(self, index=0, upper=3):
         """
