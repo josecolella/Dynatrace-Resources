@@ -7,6 +7,7 @@ from selenium.webdriver.common.keys import Keys
 from abc import ABCMeta
 from abc import abstractmethod
 import datetime
+import calendar
 import logging
 import time
 import re
@@ -114,7 +115,7 @@ class AbstractPortal(object):
             "posix": "/dev/null"
         }
         self.driver = webdriver.PhantomJS(
-            service_log_path=self.osNull[os.name])
+            service_log_path=self.osNull[os.name], service_args=['--ignore-ssl-errors=true'])
         self.driver.maximize_window()
         self.windowSize = self.driver.get_window_size()
         self._username = username
@@ -161,7 +162,8 @@ class AbstractPortal(object):
         usernameInput.send_keys(self.username)
         logging.debug("Sending password credentials")
         passwordInput.send_keys(self.password)
-        submitButton = self.driver.find_element_by_id(self.submitButtonIdentifier)
+        submitButton = self.driver.find_element_by_id(
+            self.submitButtonIdentifier)
         logging.debug("Sending button click")
         submitButton.click()
         logging.debug("Waiting for page to load")
@@ -177,7 +179,7 @@ class GPNPortal(AbstractPortal):
 
     def __init__(self, username, password):
         super(GPNPortal, self).__init__(username, password)
-        self.accountsList = []
+        self.accountsList = set()
 
     @property
     def homePage(self):
@@ -199,13 +201,14 @@ class GPNPortal(AbstractPortal):
         super(GPNPortal, self).login()
         try:
             WebDriverWait(self.driver, 30).until(
-                EC.visibility_of_element_located((By.CLASS_NAME, "theme")))
+                EC.visibility_of_element_located((By.CLASS_NAME, "black-1")))
         except Exception:
             logging.warning("The page could not load")
         time.sleep(5)
+        self.portalWindow = self.driver.current_window_handle
         self.driver.save_screenshot("gpn2.png")
 
-    def getXFConsumption(self, startDay=1, startMonth=datetime.date.today().month, endDay=31, endMonth=datetime.date.today().month):
+    def getXFConsumption(self, startDay=1, endDay=calendar.monthrange(datetime.date.today().year, datetime.date.today().month)[1], startMonth=datetime.date.today().month, endMonth=datetime.date.today().month):
         currentYear = datetime.date.today().year
         xfConsumptionPage = "https://www.gomeznetworks.com/reports/flexReport.aspx?x=&startdate={startYear}/{startMonth}/{startDay}&enddate={endYear}/{endMonth}/{endDay}".format(
             startYear=currentYear,
@@ -215,7 +218,10 @@ class GPNPortal(AbstractPortal):
             endMonth=endMonth,
             endDay=endDay
         )
-        self.driver.get(xfConsumptionPage)
+        # self.driver.get(xfConsumptionPage)
+        self.driver.execute_script(
+            "window.open('{}')".format(xfConsumptionPage))
+        self.driver.switch_to_window(self.driver.window_handles[1])
         try:
             WebDriverWait(self.driver, 30).until(
                 EC.visibility_of_element_located((By.ID, "ctl00$Content$Chart")))
@@ -231,19 +237,29 @@ class GPNPortal(AbstractPortal):
         xfConsumption.setSumXFConsumption(1, 31)
         return xfConsumption
 
-    def addSubAccounts(self, url):
-        pass
-        # TODO: needs to open tabs with url and close. window.close can only be used with window.open
-        # self.accountsList.append(url)
-        # self.driver
+    def addSubAccounts(self):
+        if len(self.driver.window_handles) > 1:
+            self.driver.execute_script("window.close()")
+            self.driver.switch_to_window(self.driver.window_handles[0])
         # Button needs to be clicked in order to see other accounts
-        # self.driver.find_element_by_id("identity-btn-name").click()
-        # accountList = self.driver.find_element_by_id("divIdentityList")
+        self.driver.find_element_by_id("identity-btn-name").click()
+        accountList = self.driver.find_element_by_id("divIdentityList")
         # Everything but the first and last element as the first element is the tr -> Switch accounts and the last tr
         # has an empty name
-        # accountListRows = accountList.find_elements_by_tag_name("tr")[1:-1]
-        # self.accounts = [{'name': accountListRow.text, 'node': accountListRow}
-                         # for accountListRow in accountListRows]
+        accountListRows = accountList.find_elements_by_tag_name("tr")[1:-1]
+        accounts = [{'name': accountListRow.text, 'node': accountListRow}
+                    for accountListRow in accountListRows if accountListRow.text not in self.accountsList]
+        logging.info(accounts)
+        accounts[0]['node'].click()
+        self.accountsList.add(accounts[0]['name'])
+        try:
+            WebDriverWait(self.driver, 30).until(
+                EC.visibility_of_element_located((By.CLASS_NAME, "black-1")))
+        except Exception:
+            logging.warning("The page could not load")
+        time.sleep(5)
+        self.driver.save_screenshot('1.png')
+        logging.info(self.accountsList)
 
 
 class DynatracePortal(AbstractPortal):
