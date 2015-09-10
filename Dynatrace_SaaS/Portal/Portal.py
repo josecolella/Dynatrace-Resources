@@ -153,7 +153,8 @@ class AbstractPortal(object):
         logging.debug("Fetching Dynatrace Login Page")
         self.driver.get(self.homePage)
         logging.debug("Finish fetching page")
-        self.driver.save_screenshot('homePage.png')
+        self.driver.save_screenshot(
+            '{}-HomePage.png'.format(datetime.datetime.today()))
         usernameInput = self.driver.find_element_by_name(
             self.usernameInputIdentifier)
         passwordInput = self.driver.find_element_by_name(
@@ -176,10 +177,13 @@ class GPNPortal(AbstractPortal):
 
     tableId = "ctl00_Content_XFSummaryTable"
     endOfMonthProjectionIdentifier = "ctl00_Content_XFProjectedUsage"
+    accountsListIdentifier = "identity-btn-name"
+    accountsListDropdownIdentifier = "divIdentityList"
 
     def __init__(self, username, password):
         super(GPNPortal, self).__init__(username, password)
         self.accountsList = set()
+        self.accountNameRegex = re.compile(r':(?P<accountName>.+):')
 
     @property
     def homePage(self):
@@ -206,7 +210,8 @@ class GPNPortal(AbstractPortal):
             logging.warning("The page could not load")
         time.sleep(5)
         self.portalWindow = self.driver.current_window_handle
-        self.driver.save_screenshot("gpn2.png")
+        self.driver.save_screenshot(
+            "{}-Login.png".format(datetime.datetime.today()))
 
     def getXFConsumption(self, startDay=1, endDay=calendar.monthrange(datetime.date.today().year, datetime.date.today().month)[1], startMonth=datetime.date.today().month, endMonth=datetime.date.today().month):
         currentYear = datetime.date.today().year
@@ -234,22 +239,27 @@ class GPNPortal(AbstractPortal):
         xfMeasurementHtmlTable = summaryTable.find_elements_by_tag_name("td")
         xfConsumption.setXFTable(xfMeasurementHtmlTable)
         xfConsumption.setMonthlyOffset()
-        xfConsumption.setSumXFConsumption(1, 31)
+        xfConsumption.setSumXFConsumption(startDay, endDay)
         return xfConsumption
 
-    def addSubAccounts(self):
+    def switchAccount(self):
         if len(self.driver.window_handles) > 1:
             self.driver.execute_script("window.close()")
             self.driver.switch_to_window(self.driver.window_handles[0])
         # Button needs to be clicked in order to see other accounts
-        self.driver.find_element_by_id("identity-btn-name").click()
-        accountList = self.driver.find_element_by_id("divIdentityList")
+        self.driver.find_element_by_id(
+            GPNPortal.accountsListIdentifier).click()
+        accountList = self.driver.find_element_by_id(
+            GPNPortal.accountsListDropdownIdentifier)
         # Everything but the first and last element as the first element is the tr -> Switch accounts and the last tr
         # has an empty name
         accountListRows = accountList.find_elements_by_tag_name("tr")[1:-1]
-        accounts = [{'name': accountListRow.text, 'node': accountListRow}
-                    for accountListRow in accountListRows if accountListRow.text not in self.accountsList]
+        accounts = [{'name': (re.search(
+                self.accountNameRegex, accountListRow.text).group("accountName")).strip(), 'node': accountListRow}
+            for accountListRow in accountListRows if (re.search(
+            self.accountNameRegex, accountListRow.text).group("accountName")).strip() not in self.accountsList]
         logging.info(accounts)
+        # Click the first account in the dropdown
         accounts[0]['node'].click()
         self.accountsList.add(accounts[0]['name'])
         try:
@@ -258,7 +268,10 @@ class GPNPortal(AbstractPortal):
         except Exception:
             logging.warning("The page could not load")
         time.sleep(5)
-        self.driver.save_screenshot('1.png')
+        logging.info("Current Account: {}".format(
+            self.driver.find_element_by_id("identity-btn-name").text))
+        self.driver.save_screenshot(
+            '{}-SwitchAccount.png'.format(datetime.datetime.today()))
         logging.info(self.accountsList)
 
 
