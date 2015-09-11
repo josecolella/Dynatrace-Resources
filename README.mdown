@@ -1,12 +1,63 @@
 Dynatrace Resources
 ===================
 
-This repository contains useful scripts for automation
-of task for the different Dynatrace clients that I manage
+Reason for creating this
+------------------------
 
-#Dynatrace SaaS
+The RESTful API for Synthetic-as-a-Service or SaaS that Dynatrace provides many features that allow
+to extract rich sets of data for the creation of custom reports and for report automation. *Unfortunately*
+the REST API does not offer a possibility to retrieve XF measurements for the account. 
+Also I wanted a way to acquire screenshots from the charts that were created for the tests that were being created,
+so I decided to create a program that allows the user to retrieve XF Consumption measurement from an account as well 
+as any account that is associated to the account (For example: An account may have several subaccounts in the GPN Portal)
+The program provides the ability to obtain the end-of-month projection measurements, the sum of xf measurements from specific
+dates, as well as monthly offsets. As of now these were the attributes that seemed most pressing for XF measurements. There
+is always a change for improvement
 
-Contains code that interfaces with the REST API for SaaS as well as Portal automation for report building
+Requirements
+------------
+
+The following software needs to be installed
+- python3
+- selenium
+- phantomjs 
+  * *On Windows, remember to have phantomjs.exe in PATH variables*
+
+Installation
+------------
+
+Follow installation instructions for PhantomJS for your operating system. For Linux
+users, you will need to build PhantomJS. The instructions can be found [here](http://phantomjs.org/download.html)
+
+
+```sh
+pip3 install selenium
+# If git is installed 
+git clone https://github.com/josecolella/Dynatrace-Resources.git
+cd Dynatrace-Resources
+```
+
+Road Map
+--------
+
+
+Usage
+-----
+
+This module provides various functionality the extract different type of information from the [GPN Portal](https://www.gomeznetworks.com/?g=1) as well
+as the [Dynatrace Portal](www.gomezapm.com)
+
+* Obtaining XF Consumption
+
+```python
+import Portal
+#username and password contain the appropriate GPN username and password
+gpnPortal = Portal.GPNPortal(username, password)
+gpnPortal.login()
+xfConsumption = gpnPortal.getXFConsumption(startDay, endDay)
+```
+
+
 
 
 
