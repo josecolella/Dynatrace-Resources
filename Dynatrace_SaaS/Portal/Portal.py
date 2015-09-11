@@ -17,10 +17,10 @@ logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 
-class XFConsumption(object):
+class XFMeasurement(object):
 
-    """XFConsumption represents the class that encapsulates everything that
-    has to do with the XFConsumption window that pop-up when clicking the admin tab
+    """XFMeasurement represents the class that encapsulates everything that
+    has to do with the XFMeasurement window that pop-up when clicking the admin tab
     in the GPN portal"""
 
     def __init__(self):
@@ -39,6 +39,7 @@ class XFConsumption(object):
         Returns:
             int: The integer from the string, removing any punctuation
         """
+        assert type(intString) is str, print("Expected intString to be str")
         sanitizedInteger = int(re.sub(r',', '', intString))
         return sanitizedInteger
 
@@ -54,7 +55,7 @@ class XFConsumption(object):
         self.endOfMonthProjection = self._sanitizeIntegerString(projection)
 
     def _getNumberOfColumns(self, tableRowsList):
-        assert type(tableRowsList) == list, print(
+        assert type(tableRowsList) is list, print(
             "tableRows expected to be list, but has type: {}".format(type(tableRowsList)))
         columnIndices = tuple(index for elem, index in zip(
             tableRowsList, range(len(tableRowsList))) if re.search(self.lettersRegex, elem))
@@ -70,9 +71,9 @@ class XFConsumption(object):
             }
             for index in range(0, len(tableRowsTextList), numColumn)]
 
-    def setSumXFConsumption(self, startDay=1, endDay=31):
+    def setSumXFMeasurement(self, startDay=1, endDay=31):
         """
-        setSumXFConsumption(startDay, endDay) -> sets the sum of the xfconsumption measures
+        setSumXFMeasurement(startDay, endDay) -> sets the sum of the xfconsumption measures
 
         Args
         ----
@@ -107,8 +108,8 @@ class AbstractPortal(object):
     __metaclass__ = ABCMeta
 
     def __init__(self, username, password):
-        assert type(username) == str, print('username is a string')
-        assert type(password) == str, print('password is a string')
+        assert type(username) is str, print('username is a string')
+        assert type(password) is str, print('password is a string')
         # If the operating system is windows or *nix.
         self.osNull = {
             "nt": "NUL",
@@ -201,7 +202,19 @@ class GPNPortal(AbstractPortal):
     def submitButtonIdentifier(self):
         return "loginbutton"
 
+    def _getCurrentAccountName(self):
+        currentAccountName = self.driver.find_element_by_id(
+            "identity-btn-name").text
+        return currentAccountName
+
     def login(self):
+        """login() inputs the username and password into the corresponding DOM elements
+        of the GPN login page and establishes a session that allows for the interaction
+        with the various elements of the GPN Portal, including the extraction of XF measurements
+
+        Returns:
+            None
+        """
         super(GPNPortal, self).login()
         try:
             WebDriverWait(self.driver, 30).until(
@@ -213,7 +226,27 @@ class GPNPortal(AbstractPortal):
         self.driver.save_screenshot(
             "{}-Login.png".format(datetime.datetime.today()))
 
-    def getXFConsumption(self, startDay=1, endDay=calendar.monthrange(datetime.date.today().year, datetime.date.today().month)[1], startMonth=datetime.date.today().month, endMonth=datetime.date.today().month):
+    def getXFMeasurement(self, startDay=1, endDay=calendar.monthrange(datetime.date.today().year, datetime.date.today().month)[1], startMonth=datetime.date.today().month, endMonth=datetime.date.today().month):
+        """getXFMeasurement(startDay, endDay, startMonth, endMonth) returns the XF consumption for the current account
+        calculating the monthly offset, end of month projection, and the sum of the xf measurements from `startDay` to
+        `endDay`
+
+        Args:
+            startDay (Optional[int]): The initial day to get the XF measurements. Defaults to 1
+            endDay (Optional[int]): The last day to get the XF measurements. Defaults to the last day of the month
+            startMonth (Optional[int]): The starting month from which to fetch the XF measurements. Defaults to current month
+            endMonth (Optional[int]): The ending month from which to fetch the XF measurem
+
+        Returns:
+            XFMeasurement: an instance of the XFMeasurement class initialized with the monthly offset, end of month projection, and the sum of the
+            XF measurements from `startDay` to `endDay`
+
+        Raises:
+            AssertionError: If `startMonth` is not equal to `endMonth`. The GPN Portal will only show XF consumption
+            measurement one month at a time
+        """
+        assert startMonth == endMonth, "Expected startMonth to be equal to endMonth. {} is not equal to {}".format(
+            startMonth, endMonth)
         currentYear = datetime.date.today().year
         xfConsumptionPage = "https://www.gomeznetworks.com/reports/flexReport.aspx?x=&startdate={startYear}/{startMonth}/{startDay}&enddate={endYear}/{endMonth}/{endDay}".format(
             startYear=currentYear,
@@ -232,20 +265,23 @@ class GPNPortal(AbstractPortal):
                 EC.visibility_of_element_located((By.ID, "ctl00$Content$Chart")))
         except Exception:
             logging.warning("The page could not load")
-        xfConsumption = XFConsumption()
+        xfConsumption = XFMeasurement()
         xfConsumption.setEndOfMonthProjection(
             self.driver.find_element_by_id(GPNPortal.endOfMonthProjectionIdentifier).text)
         summaryTable = self.driver.find_element_by_id(GPNPortal.tableId)
         xfMeasurementHtmlTable = summaryTable.find_elements_by_tag_name("td")
         xfConsumption.setXFTable(xfMeasurementHtmlTable)
         xfConsumption.setMonthlyOffset()
-        xfConsumption.setSumXFConsumption(startDay, endDay)
+        xfConsumption.setSumXFMeasurement(startDay, endDay)
         return xfConsumption
 
     def switchAccount(self):
         if len(self.driver.window_handles) > 1:
             self.driver.execute_script("window.close()")
             self.driver.switch_to_window(self.driver.window_handles[0])
+        cleanAccountName = lambda account: (
+            re.search(self.accountNameRegex, account).group("accountName")).strip()
+        self.accountsList.add(cleanAccountName(self._getCurrentAccountName()))
         # Button needs to be clicked in order to see other accounts
         self.driver.find_element_by_id(
             GPNPortal.accountsListIdentifier).click()
@@ -254,14 +290,11 @@ class GPNPortal(AbstractPortal):
         # Everything but the first and last element as the first element is the tr -> Switch accounts and the last tr
         # has an empty name
         accountListRows = accountList.find_elements_by_tag_name("tr")[1:-1]
-        accounts = [{'name': (re.search(
-                self.accountNameRegex, accountListRow.text).group("accountName")).strip(), 'node': accountListRow}
-            for accountListRow in accountListRows if (re.search(
-            self.accountNameRegex, accountListRow.text).group("accountName")).strip() not in self.accountsList]
+        accounts = [{'name': cleanAccountName(accountListRow.text), 'node': accountListRow}
+                    for accountListRow in accountListRows if cleanAccountName(accountListRow.text) not in self.accountsList]
         logging.info(accounts)
         # Click the first account in the dropdown
         accounts[0]['node'].click()
-        self.accountsList.add(accounts[0]['name'])
         try:
             WebDriverWait(self.driver, 30).until(
                 EC.visibility_of_element_located((By.CLASS_NAME, "black-1")))
@@ -269,7 +302,7 @@ class GPNPortal(AbstractPortal):
             logging.warning("The page could not load")
         time.sleep(5)
         logging.info("Current Account: {}".format(
-            self.driver.find_element_by_id("identity-btn-name").text))
+            cleanAccountName(self._getCurrentAccountName())))
         self.driver.save_screenshot(
             '{}-SwitchAccount.png'.format(datetime.datetime.today()))
         logging.info(self.accountsList)
