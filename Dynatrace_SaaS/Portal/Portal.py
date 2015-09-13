@@ -315,6 +315,7 @@ class DynatracePortal(AbstractPortal):
     chartsClass = "apm-btn-link"
     logoutId = "sign-out"
     iframeName = "apmframe"
+    chartsUrl = "http://cr02.dynatrace.com/en_US/group/guest/interactive-charts"
 
     @property
     def homePage(self):
@@ -332,59 +333,56 @@ class DynatracePortal(AbstractPortal):
     def submitButtonIdentifier(self):
         return "signIn"
 
+    def __init__(self, username, password):
+        super(DynatracePortal, self).__init__(username, password)
+        self.chartsCaptured = set()
+
     def login(self):
         """
         login()
         """
         super(DynatracePortal, self).login()
         try:
-            WebDriverWait(self.driver, 5).until(
+            WebDriverWait(self.driver, 30).until(
                 EC.presence_of_element_located((By.ID, DynatracePortal.monitorAnalyzeId)))
         except Exception:
             logging.warning("The page could not load")
-        self.driver.save_screenshot("Portal.png")
+        logging.debug("Sleeping for 10 seconds")
+        time.sleep(10)
+        self.driver.save_screenshot(
+            "{}-Login.png".format(datetime.datetime.today()))
 
-    def getCharts(self, index=0, upper=3):
+    def getCharts(self):
         """
         """
-        logging.debug("Clicking Monitor & Analyze Tab")
-        self.driver.find_element_by_id(
-            DynatracePortal.monitorAnalyzeId).click()
-        self.driver.save_screenshot('here{}.png'.format(index))
-        logging.debug("Getting chart link element")
-        chartLink = self.driver.find_element_by_id(
-            DynatracePortal.interactiveChartId)
-        href = chartLink.get_attribute("href")
-        logging.debug(href)
-        self.driver.get(href)
-        # try:
-        self.driver.save_screenshot('here2{}.png'.format(index))
+        logging.info("navigating to charts URL")
+        self.driver.get(DynatracePortal.chartsUrl)
+        self.driver.save_screenshot(
+            '{}-ClickMonitorAnalyzeTab.png'.format(datetime.datetime.today()))
         try:
             WebDriverWait(self.driver, 30).until(
-                EC.visibility_of_element_located((By.ID, "apmframe")))
+                EC.visibility_of_element_located((By.ID, DynatracePortal.apmframe)))
             # Switch to iframe in order to obtain DOM elements
             self.driver.switch_to_frame(DynatracePortal.iframeName)
         except Exception:
             logging.warn("Element could not be found within the time frame")
-        logging.debug("Sleeping for 5 seconds")
-        time.sleep(5)
-        self.driver.save_screenshot('here3{}.png'.format(index))
-        test = self.driver.find_element_by_id("wrapper").get_attribute("class")
-        logging.debug("Class is: {}".format(test))
-        test2 = self.driver.find_element_by_class_name(
-            "dataTable").get_attribute("style")
-        logging.debug("Style is: {}".format(test2))
-        test3 = self.driver.find_elements_by_class_name(
+        logging.debug("Sleeping for 15 seconds")
+        time.sleep(15)
+        self.driver.save_screenshot(
+            '{}-ChartsAvailable.png'.format(datetime.datetime.today()))
+        charts = self.driver.find_elements_by_class_name(
             DynatracePortal.chartsClass)
-        logging.debug("Charts are: {}".format(test3))
-        test3classes = list(filter(lambda node: DynatracePortal.chartsClass in node.get_attribute(
-            "class") and node.text != '', test3))
-        print("Classes are: {}".format([elem.text for elem in test3classes]))
-        self.driver.save_screenshot('here4{}.png'.format(index))
-        print(test3classes[0])
-        print("Clicking on element")
-        print(test3classes[0].click())
-        # logging.debug("Saving screenshot")
+        logging.info("Charts are: {}".format(charts))
+        chartNodes = tuple(filter(lambda node: DynatracePortal.chartsClass in node.get_attribute(
+            "class") and node.text not in self.chartsCaptured and node.text != '', charts))
+        logging.info(
+            "Classes are: {}".format([elem.text for elem in chartNodes]))
+        # Add text to set of captured charts
+        self.chartsCaptured.add(chartNodes[0].text)
+        logging.info(self.chartsCaptured)
+        logging.info(chartNodes[0])
+        logging.info("Clicking on element")
+        chartNodes[0].click()
         try:
             WebDriverWait(self.driver, 30).until(
                 EC.visibility_of_element_located((By.ID, "apmframe")))
@@ -394,8 +392,11 @@ class DynatracePortal(AbstractPortal):
                 EC.visibility_of_element_located((By.TAG_NAME, "svg")))
         except Exception:
             logging.warn("Element could not be found within the time frame")
-        time.sleep(25)
-        self.driver.save_screenshot('here5{}.png'.format(index))
+        logging.info("Sleeping for 15 seconds")
+        time.sleep(15)
+        self.driver.save_screenshot(
+            '{}-Chart.png'.format(datetime.datetime.today()))
+        logging.info("Finished saving screenshot")
 
     def logout(self):
         pass
