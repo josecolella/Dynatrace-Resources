@@ -256,7 +256,6 @@ class GPNPortal(AbstractPortal):
             endMonth=endMonth,
             endDay=endDay
         )
-        # self.driver.get(xfConsumptionPage)
         self.driver.execute_script(
             "window.open('{}')".format(xfConsumptionPage))
         self.driver.switch_to_window(self.driver.window_handles[1])
@@ -347,10 +346,10 @@ class DynatracePortal(AbstractPortal):
                 EC.presence_of_element_located((By.ID, DynatracePortal.monitorAnalyzeId)))
         except Exception:
             logging.warning("The page could not load")
-        logging.debug("Sleeping for 10 seconds")
-        time.sleep(10)
+        logging.debug("Sleeping for 15 seconds")
+        time.sleep(15)
         self.driver.save_screenshot(
-            "{}-Login.png".format(datetime.datetime.today()))
+            "{}-Login-{}.png".format(accountName, datetime.datetime.today()))
 
     def getCharts(self):
         """
@@ -398,8 +397,16 @@ class DynatracePortal(AbstractPortal):
             '{}-Chart.png'.format(datetime.datetime.today()))
         logging.info("Finished saving screenshot")
 
-    def logout(self):
-        pass
-        # signOutButton = self.driver.find_element_by_id(
-        #     DynatracePortal.logoutId)
-        # signOutButton.click()
+
+class BTSeedingPortal(DynatracePortal):
+
+    """docstring for BTSeedingPortal"""
+
+    def __init__(self, username, password):
+        super(BTSeedingPortal, self).__init__(username, password)
+        self.currentAccountName = None
+        # accountName = self.driver.find_element_by_id(
+        #     "userInfoMenus").find_elements_by_tag_name("li")[0].find_elements_by_tag_name("a")[0].text
+        # print(accountName)
+        # self.cleanAccountName = re.search(
+        #    r'@(?P<accountName>.+)', accountName).group("accountName")
