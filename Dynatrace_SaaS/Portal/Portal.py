@@ -5,6 +5,7 @@ from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 from abc import ABCMeta
 from abc import abstractmethod
+from PIL import Image
 import PortalProperties
 import datetime
 import calendar
@@ -13,12 +14,13 @@ import time
 import re
 import os
 
-logging.basicConfig(level=logging.INFO)
+logging.basicConfig(level=logging.WARNING)
 logger = logging.getLogger(__name__)
 
 
 class AbstractPortal(object):
     __metaclass__ = ABCMeta
+    screenshotDebugDir = "screenshotDebug"
 
     def __init__(self, username, password):
         assert type(username) is str, print('username is a string')
@@ -34,6 +36,9 @@ class AbstractPortal(object):
         self.windowSize = self.driver.get_window_size()
         self._username = username
         self._password = password
+        self.screenshotDebugDumpDirPath = "{path}/{directory}".format(
+            path=os.getcwd(), directory=AbstractPortal.screenshotDebugDir)
+        self._checkDumpDirIsCreated()
 
     @property
     @abstractmethod
@@ -63,12 +68,19 @@ class AbstractPortal(object):
     def password(self):
         return self._password
 
+    def _checkDumpDirIsCreated(self):
+        if not os.path.isdir(self.screenshotDebugDir):
+            os.mkdir(self.screenshotDebugDumpDirPath)
+
+    def _saveDebugScreenshot(self, screenshotName):
+        self.driver.save_screenshot(
+            '{}/{}-{}.png'.format(AbstractPortal.screenshotDebugDir, datetime.datetime.today(), screenshotName))
+
     def login(self):
         logging.debug("Fetching Dynatrace Login Page")
         self.driver.get(self.homePage)
         logging.debug("Finish fetching page")
-        self.driver.save_screenshot(
-            '{}-HomePage.png'.format(datetime.datetime.today()))
+        self._saveDebugScreenshot("Home")
         usernameInput = self.driver.find_element_by_name(
             self.usernameInputIdentifier)
         passwordInput = self.driver.find_element_by_name(
@@ -136,8 +148,7 @@ class GPNPortal(AbstractPortal):
             logging.warning("The page could not load")
         time.sleep(5)
         self.portalWindow = self.driver.current_window_handle
-        self.driver.save_screenshot(
-            "{}-Login.png".format(datetime.datetime.today()))
+        self._saveDebugScreenshot("Login")
 
     def getXFMeasurement(self, startDay=1, endDay=calendar.monthrange(datetime.date.today().year, datetime.date.today().month)[1], startMonth=datetime.date.today().month, endMonth=datetime.date.today().month):
         """getXFMeasurement(startDay, endDay, startMonth, endMonth) returns the XF consumption for the current account
@@ -217,8 +228,7 @@ class GPNPortal(AbstractPortal):
         time.sleep(5)
         logging.info("Current Account: {}".format(
             cleanAccountName(self._getCurrentAccountName())))
-        self.driver.save_screenshot(
-            '{}-SwitchAccount.png'.format(datetime.datetime.today()))
+        self._saveDebugScreenshot("SwitchAccount.png")
         logging.info(self.accountsList)
 
 
@@ -250,6 +260,28 @@ class DynatracePortal(AbstractPortal):
     def __init__(self, username, password):
         super(DynatracePortal, self).__init__(username, password)
         self.chartsCaptured = set()
+        self.currentAccountName = self.username
+        self.croppingChartsDimension = {
+            "left": 675,
+            "up": 270,
+            "right": 675,
+            "down": 150
+        }
+
+    def _cropChart(self, imgFile):
+        chartImage = Image.open(imgFile)
+
+        half_the_width = chartImage.size[0] // 2
+        half_the_height = chartImage.size[1] // 2
+        croppedImage = chartImage.crop(
+            (
+                half_the_width - self.croppingChartsDimension["left"],
+                half_the_height - self.croppingChartsDimension["up"],
+                half_the_width + self.croppingChartsDimension["right"],
+                half_the_height + self.croppingChartsDimension["down"]
+            )
+        )
+        croppedImage.save(imgFile)
 
     def login(self):
         """
@@ -263,16 +295,11 @@ class DynatracePortal(AbstractPortal):
             logging.warning("The page could not load")
         logging.debug("Sleeping for 15 seconds")
         time.sleep(15)
-        self.driver.save_screenshot(
-            "{}-Login-{}.png".format(accountName, datetime.datetime.today()))
+        self._saveDebugScreenshot("Login.png")
 
-    def getCharts(self):
-        """
-        """
+    def _getChartPage(self, chartName):
         logging.info("navigating to charts URL")
         self.driver.get(DynatracePortal.chartsUrl)
-        self.driver.save_screenshot(
-            '{}-ClickMonitorAnalyzeTab.png'.format(datetime.datetime.today()))
         try:
             WebDriverWait(self.driver, 30).until(
                 EC.visibility_of_element_located((By.ID, DynatracePortal.apmframe)))
@@ -282,13 +309,15 @@ class DynatracePortal(AbstractPortal):
             logging.warn("Element could not be found within the time frame")
         logging.debug("Sleeping for 15 seconds")
         time.sleep(15)
-        self.driver.save_screenshot(
-            '{}-ChartsAvailable.png'.format(datetime.datetime.today()))
-        charts = self.driver.find_elements_by_class_name(
+        self._saveDebugScreenshot('ChartsAvailable.png')
+        availableCharts = self.driver.find_elements_by_class_name(
             DynatracePortal.chartsClass)
-        logging.info("Charts are: {}".format(charts))
-        chartNodes = tuple(filter(lambda node: DynatracePortal.chartsClass in node.get_attribute(
-            "class") and node.text not in self.chartsCaptured and node.text != '', charts))
+        logging.info("Charts are: {}".format(availableCharts))
+        # chartNodes = tuple(filter(lambda node: DynatracePortal.chartsClass in node.get_attribute(
+        #     "class") and node.text not in self.chartsCaptured and node.text != '', availableCharts))
+        chartNodes = tuple(filter(lambda node: node.text == chartName and node.text != '', availableCharts))
+        if len(chartNodes) == 0:
+            raise Exception("Expected valid chart name. Available charts are: {}".format([elem.text for elem in chartNodes]))
         logging.info(
             "Classes are: {}".format([elem.text for elem in chartNodes]))
         # Add text to set of captured charts
@@ -308,20 +337,39 @@ class DynatracePortal(AbstractPortal):
             logging.warn("Element could not be found within the time frame")
         logging.info("Sleeping for 15 seconds")
         time.sleep(15)
-        self.driver.save_screenshot(
-            '{}-Chart.png'.format(datetime.datetime.today()))
+
+    def saveChartToScreenshot(self, chartName, cropChart=False, saveDir='.'):
+        """
+        """
+        self._getChartPage(chartName)
+        imageName = "{}/{}.png".format(saveDir, chartName)
+        self.driver.save_screenshot(imageName)
+        if cropChart:
+            self._cropChart(imageName)
         logging.info("Finished saving screenshot")
 
 
 class BTSeedingPortal(DynatracePortal):
 
     """docstring for BTSeedingPortal"""
+    username_prefix = "pyang"
+
+    chartNames = {
+        "Home page - Benchmarks",
+        "Home page - Global",
+        "Home page - Performance Map",
+        "Transaction"
+    }
 
     def __init__(self, username, password):
         super(BTSeedingPortal, self).__init__(username, password)
-        self.currentAccountName = None
-        # accountName = self.driver.find_element_by_id(
-        #     "userInfoMenus").find_elements_by_tag_name("li")[0].find_elements_by_tag_name("a")[0].text
-        # print(accountName)
-        # self.cleanAccountName = re.search(
-        #    r'@(?P<accountName>.+)', accountName).group("accountName")
+        self.currentAccountName = self.username.replace(
+            "{}.".format(BTSeedingPortal.username_prefix), '')
+
+    def saveChartToScreenshot(self, chartName, cropChart=False, saveDir='.'):
+        self._getChartPage(chartName)
+        imageName = "{}/{} - {}.png".format(saveDir, self.currentAccountName, chartName)
+        self.driver.save_screenshot(imageName)
+        if cropChart:
+            self._cropChart(imageName)
+        logging.info("Finished saving screenshot")
