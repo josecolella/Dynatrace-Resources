@@ -7,6 +7,7 @@ from abc import ABCMeta
 from abc import abstractmethod
 from PIL import Image
 import PortalProperties
+import dateutil.relativedelta as rdelta
 import datetime
 import calendar
 import logging
@@ -366,9 +367,24 @@ class BTSeedingPortal(DynatracePortal):
         self.currentAccountName = self.username.replace(
             "{}.".format(BTSeedingPortal.username_prefix), '')
 
+    def getWCDirectory(self, creationPath='.'):
+        directoryDate = None
+        today = datetime.datetime.today()
+        monday = today - datetime.timedelta(days=today.weekday())
+        if today.day == monday.day:
+            directoryDate = today + rdelta.relativedelta(days=-1, weekday=rdelta.MO(-1))
+        else:
+            directoryDate = today + rdelta.relativedelta(days=-1, weekday=rdelta.MO(-1)) + rdelta.relativedelta(days=-1, weekday=rdelta.MO(-1))
+        directoryDateStr = "WC {day} {month} {year}".format(day=directoryDate.day, month=directoryDate.month, year=directoryDate.year)
+        try:
+            os.mkdir("{}/{}".format(creationPath, directoryDateStr))
+        except Exception:
+            pass
+        return directoryDateStr
+
     def saveChartToScreenshot(self, chartName, cropChart=False, saveDir='.'):
         self._getChartPage(chartName)
-        imageName = "{}/{} - {}.png".format(saveDir, self.currentAccountName, chartName)
+        imageName = "{}/{}/{} - {}.png".format(saveDir, self.getWCDirectory(saveDir), self.currentAccountName, chartName)
         self.driver.save_screenshot(imageName)
         if cropChart:
             self._cropChart(imageName)
