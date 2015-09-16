@@ -7,7 +7,6 @@ from abc import ABCMeta
 from abc import abstractmethod
 from PIL import Image
 import PortalProperties
-import dateutil.relativedelta as rdelta
 import datetime
 import calendar
 import logging
@@ -15,7 +14,7 @@ import time
 import re
 import os
 
-logging.basicConfig(level=logging.WARNING)
+logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 
@@ -299,7 +298,7 @@ class DynatracePortal(AbstractPortal):
         self._saveDebugScreenshot("Login.png")
 
     def _getChartPage(self, chartName):
-        logging.info("navigating to charts URL")
+	logging.debug("navigating to charts URL")
         self.driver.get(DynatracePortal.chartsUrl)
         try:
             WebDriverWait(self.driver, 30).until(
@@ -313,19 +312,19 @@ class DynatracePortal(AbstractPortal):
         self._saveDebugScreenshot('ChartsAvailable.png')
         availableCharts = self.driver.find_elements_by_class_name(
             DynatracePortal.chartsClass)
-        logging.info("Charts are: {}".format(availableCharts))
+	logging.debug("Charts are: {}".format(availableCharts))
         # chartNodes = tuple(filter(lambda node: DynatracePortal.chartsClass in node.get_attribute(
         #     "class") and node.text not in self.chartsCaptured and node.text != '', availableCharts))
         chartNodes = tuple(filter(lambda node: node.text == chartName and node.text != '', availableCharts))
         if len(chartNodes) == 0:
             raise Exception("Expected valid chart name. Available charts are: {}".format([elem.text for elem in chartNodes]))
-        logging.info(
+	logging.debug(
             "Classes are: {}".format([elem.text for elem in chartNodes]))
         # Add text to set of captured charts
         self.chartsCaptured.add(chartNodes[0].text)
-        logging.info(self.chartsCaptured)
-        logging.info(chartNodes[0])
-        logging.info("Clicking on element")
+	logging.debug(self.chartsCaptured)
+	logging.debug(chartNodes[0])
+	logging.debug("Clicking on element")
         chartNodes[0].click()
         try:
             WebDriverWait(self.driver, 30).until(
@@ -336,7 +335,7 @@ class DynatracePortal(AbstractPortal):
                 EC.visibility_of_element_located((By.TAG_NAME, "svg")))
         except Exception:
             logging.warn("Element could not be found within the time frame")
-        logging.info("Sleeping for 15 seconds")
+	logging.debug("Sleeping for 15 seconds")
         time.sleep(15)
 
     def saveChartToScreenshot(self, chartName, cropChart=False, saveDir='.'):
@@ -344,47 +343,6 @@ class DynatracePortal(AbstractPortal):
         """
         self._getChartPage(chartName)
         imageName = "{}/{}.png".format(saveDir, chartName)
-        self.driver.save_screenshot(imageName)
-        if cropChart:
-            self._cropChart(imageName)
-        logging.info("Finished saving screenshot")
-
-
-class BTSeedingPortal(DynatracePortal):
-
-    """docstring for BTSeedingPortal"""
-    username_prefix = "pyang"
-
-    chartNames = {
-        "Home page - Benchmarks",
-        "Home page - Global",
-        "Home page - Performance Map",
-        "Transaction"
-    }
-
-    def __init__(self, username, password):
-        super(BTSeedingPortal, self).__init__(username, password)
-        self.currentAccountName = self.username.replace(
-            "{}.".format(BTSeedingPortal.username_prefix), '')
-
-    def getWCDirectory(self, creationPath='.'):
-        directoryDate = None
-        today = datetime.datetime.today()
-        monday = today - datetime.timedelta(days=today.weekday())
-        if today.day == monday.day:
-            directoryDate = today + rdelta.relativedelta(days=-1, weekday=rdelta.MO(-1))
-        else:
-            directoryDate = today + rdelta.relativedelta(days=-1, weekday=rdelta.MO(-1)) + rdelta.relativedelta(days=-1, weekday=rdelta.MO(-1))
-        directoryDateStr = "WC {day} {month} {year}".format(day=directoryDate.day, month=directoryDate.month, year=directoryDate.year)
-        try:
-            os.mkdir("{}/{}".format(creationPath, directoryDateStr))
-        except Exception:
-            pass
-        return directoryDateStr
-
-    def saveChartToScreenshot(self, chartName, cropChart=False, saveDir='.'):
-        self._getChartPage(chartName)
-        imageName = "{}/{}/{} - {}.png".format(saveDir, self.getWCDirectory(saveDir), self.currentAccountName, chartName)
         self.driver.save_screenshot(imageName)
         if cropChart:
             self._cropChart(imageName)
