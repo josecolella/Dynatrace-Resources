@@ -267,20 +267,36 @@ class DynatracePortal(AbstractPortal):
             "right": 675,
             "down": 150
         }
+	self.performanceMapDimension = {
+	    "right": 600,
+	    "up": 285,
+	    "left": 600,
+	    "down": 400
+	}
 
-    def _cropChart(self, imgFile):
+    def _cropChart(self, imgFile, isPerformanceMap=False):
         chartImage = Image.open(imgFile)
 
         half_the_width = chartImage.size[0] // 2
         half_the_height = chartImage.size[1] // 2
-        croppedImage = chartImage.crop(
-            (
-                half_the_width - self.croppingChartsDimension["left"],
-                half_the_height - self.croppingChartsDimension["up"],
-                half_the_width + self.croppingChartsDimension["right"],
-                half_the_height + self.croppingChartsDimension["down"]
+	if not isPerformanceMap:
+	    croppedImage = chartImage.crop(
+		(
+		    half_the_width - self.croppingChartsDimension["right"],
+		    half_the_height - self.croppingChartsDimension["up"],
+		    half_the_width + self.croppingChartsDimension["left"],
+		    half_the_height + self.croppingChartsDimension["down"]
+		)
+	    )
+	else:
+	    croppedImage = chartImage.crop(
+		(
+		    half_the_width - self.performanceMapDimension["right"],
+		    half_the_height - self.performanceMapDimension["up"],
+		    half_the_width + self.performanceMapDimension["left"],
+		    half_the_height + self.performanceMapDimension["down"]
+		)
             )
-        )
         croppedImage.save(imgFile)
 
     def login(self):
@@ -315,9 +331,11 @@ class DynatracePortal(AbstractPortal):
 	logging.debug("Charts are: {}".format(availableCharts))
         # chartNodes = tuple(filter(lambda node: DynatracePortal.chartsClass in node.get_attribute(
         #     "class") and node.text not in self.chartsCaptured and node.text != '', availableCharts))
-        chartNodes = tuple(filter(lambda node: node.text == chartName and node.text != '', availableCharts))
+	chartNodes = tuple(
+	    filter(lambda node: node.text == chartName and node.text != '', availableCharts))
         if len(chartNodes) == 0:
-            raise Exception("Expected valid chart name. Available charts are: {}".format([elem.text for elem in chartNodes]))
+	    raise Exception("Expected valid chart name. Available charts are: {}".format(
+		[elem.text for elem in availableCharts]))
 	logging.debug(
             "Classes are: {}".format([elem.text for elem in chartNodes]))
         # Add text to set of captured charts
