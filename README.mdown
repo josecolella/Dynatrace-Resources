@@ -6,9 +6,9 @@ Reason for creating this
 
 The RESTful API for Synthetic-as-a-Service or SaaS that Dynatrace provides many features that allow
 to extract rich sets of data for the creation of custom reports and for report automation. *Unfortunately*
-the REST API does not offer a possibility to retrieve XF measurements for the account. 
+the REST API does not offer a possibility to retrieve XF measurements for the account.
 Also I wanted a way to acquire screenshots from the charts that were created for the tests that were being created,
-so I decided to create a program that allows the user to retrieve XF Consumption measurement from an account as well 
+so I decided to create a program that allows the user to retrieve XF Consumption measurement from an account as well
 as any account that is associated to the account (For example: An account may have several subaccounts in the GPN Portal)
 The program provides the ability to obtain the end-of-month projection measurements, the sum of xf measurements from specific
 dates, as well as monthly offsets. As of now these were the attributes that seemed most pressing for XF measurements. There
@@ -20,7 +20,7 @@ Requirements
 The following software needs to be installed
 - python3
 - selenium
-- phantomjs 
+- phantomjs
   * *On Windows, remember to have phantomjs.exe in PATH variables*
 
 Installation
@@ -32,7 +32,7 @@ users, you will need to build PhantomJS. The instructions can be found [here](ht
 
 ```sh
 pip3 install selenium
-# If git is installed 
+# If git is installed
 git clone https://github.com/josecolella/Dynatrace-Resources.git
 cd Dynatrace-Resources
 ```
@@ -40,6 +40,15 @@ cd Dynatrace-Resources
 Road Map
 --------
 
+####GPN Portal
+
+~~Have the ability to fetch XFMeasurements from various subaccounts~~
+
+####Dynatrace Portal
+
+~~Get cropping dimensions for performance map, since it is different than charts~~
+~~Have the ability to crop out charts and performance map only~~
+~~Add the ability to save to a directory specified by the user~~
 
 Usage
 -----
