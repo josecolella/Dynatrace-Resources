@@ -40,15 +40,17 @@ cd Dynatrace-Resources
 Road Map
 --------
 
+Add command line argument for execution of program
+
 ####GPN Portal
 
-~~Have the ability to fetch XFMeasurements from various subaccounts~~
+- ~~Have the ability to fetch XFMeasurements from various subaccounts~~
 
 ####Dynatrace Portal
 
-~~Get cropping dimensions for performance map, since it is different than charts~~
-~~Have the ability to crop out charts and performance map only~~
-~~Add the ability to save to a directory specified by the user~~
+- ~~Get cropping dimensions for performance map, since it is different than charts~~
+- ~~Have the ability to crop out charts and performance map only~~
+- ~~Add the ability to save to a directory specified by the user~~
 
 Usage
 -----
