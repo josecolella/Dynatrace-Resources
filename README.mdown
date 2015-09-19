@@ -64,8 +64,23 @@ import Portal
 gpnPortal = Portal.GPNPortal(username, password)
 gpnPortal.login()
 xfConsumption = gpnPortal.getXFConsumption(startDay, endDay)
+gpnPortal.close()
 ```
 
+* Obtaining chart screenshot
+
+```python
+import Portal
+
+dtPortal = Portal.DynatraPortal(username, password)
+dtPortal.login()
+# Entire screen
+dtPortal.saveChartToScreenshot(chartName="Home Page Response Time")
+# Chart is cropped
+dtPortal.saveChartToScreenshot(chartName="Transaction",cropChart=True)
+dtPortal.close()
+
+```
 
 
 
