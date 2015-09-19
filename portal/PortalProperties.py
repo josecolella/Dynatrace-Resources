@@ -9,6 +9,7 @@ __author__ = "Jose Miguel Colella"
 __email__ = "jose.colella@dynatrace.com"
 __license__ = "MIT"
 
+
 class XFMeasurement(object):
 
     """XFMeasurement represents the class that encapsulates everything that

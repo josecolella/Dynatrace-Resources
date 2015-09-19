@@ -211,7 +211,7 @@ class GPNPortal(AbstractPortal):
             endDay=endDay
         )
         self.driver.execute_script(
-            "window.open("{}")".format(xfConsumptionPage))
+            "window.open('{}')" .format(xfConsumptionPage))
         self.driver.switch_to_window(self.driver.window_handles[1])
         try:
             WebDriverWait(self.driver, 30).until(
@@ -359,7 +359,7 @@ class DynatracePortal(AbstractPortal):
         # chartNodes = tuple(filter(lambda node: DynatracePortal.chartsClass in node.get_attribute(
         #     "class") and node.text not in self.chartsCaptured and node.text != , availableCharts))
         chartNodes = tuple(
-            filter(lambda node: node.text == chartName and node.text != , availableCharts))
+            filter(lambda node: node.text == chartName and node.text != "", availableCharts))
         if len(chartNodes) == 0:
             raise Exception("Expected valid chart name. Available charts are: {}".format(
                 [elem.text for elem in availableCharts]))
@@ -384,7 +384,8 @@ class DynatracePortal(AbstractPortal):
         time.sleep(15)
 
     def saveChartToScreenshot(self, chartName, cropChart=False, saveDir="."):
-        """
+        """saveChartToScreenshot saves a screenshot of the `chartName` provided
+        as a parameter.
 
 
         Args:
