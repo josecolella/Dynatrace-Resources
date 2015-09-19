@@ -4,6 +4,10 @@ import json
 import datetime
 import calendar
 
+__version__ = "1.0.0"
+__author__ = "Jose Miguel Colella"
+__email__ = "jose.colella@dynatrace.com"
+__license__ = "MIT"
 
 class XFMeasurement(object):
 

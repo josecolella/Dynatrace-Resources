@@ -14,69 +14,104 @@ import time
 import re
 import os
 
+__version__ = "1.0.0"
+__author__ = "Jose Miguel Colella"
+__email__ = "jose.colella@dynatrace.com"
+__license__ = "MIT"
+
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 
 class AbstractPortal(object):
+
+    """AbstractPortal is an abstract class that encapsulates all the
+    common attributes and methods of the Synthetic Portal such as
+    username, password, login
+
+
+    Attributes:
+        driver (selenium.webdriver.phantomjs.webdriver.WebDriver): The webdriver instance
+    """
     __metaclass__ = ABCMeta
     screenshotDebugDir = "screenshotDebug"
 
     def __init__(self, username, password):
-        assert type(username) is str, print('username is a string')
-        assert type(password) is str, print('password is a string')
+        assert type(username) is str, print("username is a string")
+        assert type(password) is str, print("password is a string")
         # If the operating system is windows or *nix.
-        self.osNull = {
+        self._osNull = {
             "nt": "NUL",
             "posix": "/dev/null"
         }
         self.driver = webdriver.PhantomJS(
-            service_log_path=self.osNull[os.name], service_args=['--ignore-ssl-errors=true'])
+            service_log_path=self._osNull[os.name], service_args=["--ignore-ssl-errors=true"])
         self.driver.maximize_window()
         self.windowSize = self.driver.get_window_size()
         self._username = username
         self._password = password
-        self.screenshotDebugDumpDirPath = "{path}/{directory}".format(
+        self._screenshotDebugDumpDirPath = "{path}/{directory}".format(
             path=os.getcwd(), directory=AbstractPortal.screenshotDebugDir)
         self._checkDumpDirIsCreated()
 
     @property
     @abstractmethod
     def homePage(self):
+        """
+        str: The url of the portal
+        """
         pass
 
     @property
     @abstractmethod
     def usernameInputIdentifier(self):
+        """
+        str: The DOM attribute to fetch the username <input>
+        """
         pass
 
     @property
     @abstractmethod
     def passwordInputIdentifier(self):
+        """
+        str: The DOM attribute to fetch the password <input>
+        """
         pass
 
     @property
     @abstractmethod
     def submitButtonIdentifier(self):
+        """
+        str: The DOM attribute to fetch the log in button
+        """
         pass
 
     @property
     def username(self):
+        """
+        str: The username used to login. (Read-Only)
+        """
         return self._username
 
     @property
     def password(self):
+        """
+        str: The password used to login.(Read-Only)
+        """
         return self._password
 
     def _checkDumpDirIsCreated(self):
         if not os.path.isdir(self.screenshotDebugDir):
-            os.mkdir(self.screenshotDebugDumpDirPath)
+            os.mkdir(self._screenshotDebugDumpDirPath)
 
     def _saveDebugScreenshot(self, screenshotName):
         self.driver.save_screenshot(
-            '{}/{}-{}.png'.format(AbstractPortal.screenshotDebugDir, datetime.datetime.today(), screenshotName))
+            "{}/{}-{}.png".format(AbstractPortal.screenshotDebugDir, datetime.datetime.today(), screenshotName))
 
     def login(self):
+        """login() inputs the username and password into the corresponding DOM elements
+        of the home page and establishes a session that allows for the interaction
+        """
         logging.debug("Fetching Dynatrace Login Page")
         self.driver.get(self.homePage)
         logging.debug("Finish fetching page")
@@ -96,6 +131,8 @@ class AbstractPortal(object):
         logging.debug("Waiting for page to load")
 
     def close(self):
+        """Closes the driver session and the phantomjs process.
+        """
         self.driver.quit()
 
 
@@ -109,7 +146,7 @@ class GPNPortal(AbstractPortal):
     def __init__(self, username, password):
         super(GPNPortal, self).__init__(username, password)
         self.accountsList = set()
-        self.accountNameRegex = re.compile(r':(?P<accountName>.+):')
+        self.accountNameRegex = re.compile(r":(?P<accountName>.+):")
 
     @property
     def homePage(self):
@@ -133,13 +170,6 @@ class GPNPortal(AbstractPortal):
         return currentAccountName
 
     def login(self):
-        """login() inputs the username and password into the corresponding DOM elements
-        of the GPN login page and establishes a session that allows for the interaction
-        with the various elements of the GPN Portal, including the extraction of XF measurements
-
-        Returns:
-            None
-        """
         super(GPNPortal, self).login()
         try:
             WebDriverWait(self.driver, 30).until(
@@ -181,7 +211,7 @@ class GPNPortal(AbstractPortal):
             endDay=endDay
         )
         self.driver.execute_script(
-            "window.open('{}')".format(xfConsumptionPage))
+            "window.open("{}")".format(xfConsumptionPage))
         self.driver.switch_to_window(self.driver.window_handles[1])
         try:
             WebDriverWait(self.driver, 30).until(
@@ -215,11 +245,11 @@ class GPNPortal(AbstractPortal):
         # Everything but the first and last element as the first element is the tr -> Switch accounts and the last tr
         # has an empty name
         accountListRows = accountList.find_elements_by_tag_name("tr")[1:-1]
-        accounts = [{'name': cleanAccountName(accountListRow.text), 'node': accountListRow}
+        accounts = [{"name": cleanAccountName(accountListRow.text), "node": accountListRow}
                     for accountListRow in accountListRows if cleanAccountName(accountListRow.text) not in self.accountsList]
         logging.info(accounts)
         # Click the first account in the dropdown
-        accounts[0]['node'].click()
+        accounts[0]["node"].click()
         try:
             WebDriverWait(self.driver, 30).until(
                 EC.visibility_of_element_located((By.CLASS_NAME, "black-1")))
@@ -300,9 +330,6 @@ class DynatracePortal(AbstractPortal):
         croppedImage.save(imgFile)
 
     def login(self):
-        """
-        login()
-        """
         super(DynatracePortal, self).login()
         try:
             WebDriverWait(self.driver, 30).until(
@@ -325,14 +352,14 @@ class DynatracePortal(AbstractPortal):
             logging.warn("Element could not be found within the time frame")
         logging.debug("Sleeping for 15 seconds")
         time.sleep(15)
-        self._saveDebugScreenshot('ChartsAvailable.png')
+        self._saveDebugScreenshot("ChartsAvailable.png")
         availableCharts = self.driver.find_elements_by_class_name(
             DynatracePortal.chartsClass)
         logging.debug("Charts are: {}".format(availableCharts))
         # chartNodes = tuple(filter(lambda node: DynatracePortal.chartsClass in node.get_attribute(
-        #     "class") and node.text not in self.chartsCaptured and node.text != '', availableCharts))
+        #     "class") and node.text not in self.chartsCaptured and node.text != , availableCharts))
         chartNodes = tuple(
-            filter(lambda node: node.text == chartName and node.text != '', availableCharts))
+            filter(lambda node: node.text == chartName and node.text != , availableCharts))
         if len(chartNodes) == 0:
             raise Exception("Expected valid chart name. Available charts are: {}".format(
                 [elem.text for elem in availableCharts]))
@@ -356,8 +383,14 @@ class DynatracePortal(AbstractPortal):
         logging.debug("Sleeping for 15 seconds")
         time.sleep(15)
 
-    def saveChartToScreenshot(self, chartName, cropChart=False, saveDir='.'):
+    def saveChartToScreenshot(self, chartName, cropChart=False, saveDir="."):
         """
+
+
+        Args:
+            chartName (str): The name of the chart to get the screenshot
+            cropChart (Optional[bool]): Crop only chart section. Defaults to False
+            saveDir (Optional[str]): The directory to save the screenshot. Defaults to '.'
         """
         self._getChartPage(chartName)
         imageName = "{}/{}.png".format(saveDir, chartName)
