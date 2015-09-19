@@ -1,4 +1,3 @@
-import BTSeeding
 import argparse
 import logging
 
