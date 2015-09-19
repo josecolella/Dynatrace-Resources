@@ -4,5 +4,6 @@
 clean:
 	rm *.png
 	rm -rf __pycache__
-run:
-	python3 main.py
+
+test:
+	nosetests tests/tests.py

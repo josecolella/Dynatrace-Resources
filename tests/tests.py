@@ -1,11 +1,10 @@
 import sys
 import os
 import os.path
-sys.path.append(os.path.join("..", "portal"))
-import Portal
 from nose.tools import assert_equals
 from nose.tools import raises
-
+sys.path.append(os.path.join("portal"))
+import Portal
 
 username = "pyang.produban.uk"
 password = "C0mpuwar3"
