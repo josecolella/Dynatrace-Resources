@@ -267,35 +267,35 @@ class DynatracePortal(AbstractPortal):
             "right": 675,
             "down": 150
         }
-	self.performanceMapDimension = {
-	    "right": 600,
-	    "up": 285,
-	    "left": 600,
-	    "down": 400
-	}
+        self.performanceMapDimension = {
+            "right": 600,
+            "up": 285,
+            "left": 600,
+            "down": 400
+        }
 
     def _cropChart(self, imgFile, isPerformanceMap=False):
         chartImage = Image.open(imgFile)
 
         half_the_width = chartImage.size[0] // 2
         half_the_height = chartImage.size[1] // 2
-	if not isPerformanceMap:
-	    croppedImage = chartImage.crop(
-		(
-		    half_the_width - self.croppingChartsDimension["right"],
-		    half_the_height - self.croppingChartsDimension["up"],
-		    half_the_width + self.croppingChartsDimension["left"],
-		    half_the_height + self.croppingChartsDimension["down"]
-		)
-	    )
-	else:
-	    croppedImage = chartImage.crop(
-		(
-		    half_the_width - self.performanceMapDimension["right"],
-		    half_the_height - self.performanceMapDimension["up"],
-		    half_the_width + self.performanceMapDimension["left"],
-		    half_the_height + self.performanceMapDimension["down"]
-		)
+        if not isPerformanceMap:
+            croppedImage = chartImage.crop(
+                (
+                    half_the_width - self.croppingChartsDimension["right"],
+                    half_the_height - self.croppingChartsDimension["up"],
+                    half_the_width + self.croppingChartsDimension["left"],
+                    half_the_height + self.croppingChartsDimension["down"]
+                )
+            )
+        else:
+            croppedImage = chartImage.crop(
+                (
+                    half_the_width - self.performanceMapDimension["right"],
+                    half_the_height - self.performanceMapDimension["up"],
+                    half_the_width + self.performanceMapDimension["left"],
+                    half_the_height + self.performanceMapDimension["down"]
+                )
             )
         croppedImage.save(imgFile)
 
@@ -314,7 +314,7 @@ class DynatracePortal(AbstractPortal):
         self._saveDebugScreenshot("Login.png")
 
     def _getChartPage(self, chartName):
-	logging.debug("navigating to charts URL")
+        logging.debug("navigating to charts URL")
         self.driver.get(DynatracePortal.chartsUrl)
         try:
             WebDriverWait(self.driver, 30).until(
@@ -328,21 +328,21 @@ class DynatracePortal(AbstractPortal):
         self._saveDebugScreenshot('ChartsAvailable.png')
         availableCharts = self.driver.find_elements_by_class_name(
             DynatracePortal.chartsClass)
-	logging.debug("Charts are: {}".format(availableCharts))
+        logging.debug("Charts are: {}".format(availableCharts))
         # chartNodes = tuple(filter(lambda node: DynatracePortal.chartsClass in node.get_attribute(
         #     "class") and node.text not in self.chartsCaptured and node.text != '', availableCharts))
-	chartNodes = tuple(
-	    filter(lambda node: node.text == chartName and node.text != '', availableCharts))
+        chartNodes = tuple(
+            filter(lambda node: node.text == chartName and node.text != '', availableCharts))
         if len(chartNodes) == 0:
-	    raise Exception("Expected valid chart name. Available charts are: {}".format(
-		[elem.text for elem in availableCharts]))
-	logging.debug(
+            raise Exception("Expected valid chart name. Available charts are: {}".format(
+                [elem.text for elem in availableCharts]))
+        logging.debug(
             "Classes are: {}".format([elem.text for elem in chartNodes]))
         # Add text to set of captured charts
         self.chartsCaptured.add(chartNodes[0].text)
-	logging.debug(self.chartsCaptured)
-	logging.debug(chartNodes[0])
-	logging.debug("Clicking on element")
+        logging.debug(self.chartsCaptured)
+        logging.debug(chartNodes[0])
+        logging.debug("Clicking on element")
         chartNodes[0].click()
         try:
             WebDriverWait(self.driver, 30).until(
@@ -353,7 +353,7 @@ class DynatracePortal(AbstractPortal):
                 EC.visibility_of_element_located((By.TAG_NAME, "svg")))
         except Exception:
             logging.warn("Element could not be found within the time frame")
-	logging.debug("Sleeping for 15 seconds")
+        logging.debug("Sleeping for 15 seconds")
         time.sleep(15)
 
     def saveChartToScreenshot(self, chartName, cropChart=False, saveDir='.'):
