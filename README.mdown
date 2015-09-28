@@ -23,6 +23,18 @@ The following software needs to be installed
 - PIL
   * For cropping charts
 - phantomjs
+
+####Ubuntu
+
+```sh
+sudo apt-get install phantomjs
+```
+
+####OS X
+
+
+####Windows
+
   * *On Windows, remember to have phantomjs.exe in PATH variables*
 
 Installation
