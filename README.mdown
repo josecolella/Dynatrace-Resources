@@ -23,6 +23,7 @@ The following software needs to be installed
 - PIL
   * For cropping charts
 - phantomjs
+- dateutil
 
 ####Ubuntu
 
@@ -47,6 +48,7 @@ users, you will need to build PhantomJS. The instructions can be found [here](ht
 ```sh
 pip3 install selenium # pip install selenium
 pip3 install pillow # pip install pillow 
+pip3 install python-dateutil # pip install python-dateutil
 # If git is installed
 git clone https://github.com/josecolella/Dynatrace-Resources.git
 cd Dynatrace-Resources
