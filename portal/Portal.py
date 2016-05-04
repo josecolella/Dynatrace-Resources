@@ -1,3 +1,4 @@
+#!/usr/bin/env python3
 from __future__ import print_function
 from selenium import webdriver
 from selenium.webdriver.common.by import By
@@ -289,6 +290,8 @@ class DynatracePortal(AbstractPortal):
 
     def __init__(self, username, password):
         super(DynatracePortal, self).__init__(username, password)
+        # Sets the driver to wait 10 seconds to poll the DOM. Very useful for sites like Dynatrace Portal that take a while to load elements
+        self.driver.implicitly_wait(10)
         self.chartsCaptured = set()
         self.currentAccountName = self.username
         self.croppingChartsDimension = {
@@ -335,53 +338,41 @@ class DynatracePortal(AbstractPortal):
             WebDriverWait(self.driver, 30).until(
                 EC.presence_of_element_located((By.ID, DynatracePortal.monitorAnalyzeId)))
         except Exception:
-            logging.warning("The page could not load")
-        logging.debug("Sleeping for 15 seconds")
+            logging.warning("WARNING: The login page could not load")
+        logging.info("Sleeping for 15 seconds")
         time.sleep(15)
-        self._saveDebugScreenshot("Login.png")
+        self._saveDebugScreenshot("Login")
 
-    def _getChartPage(self, chartName):
+    def getInteractiveCharts(self):
         logging.debug("navigating to charts URL")
         self.driver.get(DynatracePortal.chartsUrl)
         try:
             WebDriverWait(self.driver, 30).until(
-                EC.visibility_of_element_located((By.ID, DynatracePortal.apmframe)))
+                EC.visibility_of_element_located((By.CLASS_NAME, "dataTable")))
             # Switch to iframe in order to obtain DOM elements
-            self.driver.switch_to_frame(DynatracePortal.iframeName)
+            # self.driver.switch_to_frame(DynatracePortal.iframeName)
         except Exception:
-            logging.warn("Element could not be found within the time frame")
+            logging.warn(
+                "WARNING: Element could not be found within the time frame")
         logging.debug("Sleeping for 15 seconds")
         time.sleep(15)
-        self._saveDebugScreenshot("ChartsAvailable.png")
+        self._saveDebugScreenshot("ChartsAvailable")
+
+    def getChartPage(self, chartName):
+        self.getInteractiveCharts()
         availableCharts = self.driver.find_elements_by_class_name(
             DynatracePortal.chartsClass)
-        logging.debug("Charts are: {}".format(availableCharts))
-        # chartNodes = tuple(filter(lambda node: DynatracePortal.chartsClass in node.get_attribute(
-        #     "class") and node.text not in self.chartsCaptured and node.text != , availableCharts))
-        chartNodes = tuple(
-            filter(lambda node: node.text == chartName and node.text != "", availableCharts))
-        if len(chartNodes) == 0:
+        try:
+            chartNodes = filter(
+                lambda node: node.text == chartName and node.text != "", availableCharts)
+            chartNode = next(chartNodes)
+            # Click on chart node
+            chartNode.click()
+            logging.debug("Sleeping for 15 seconds")
+            time.sleep(15)
+        except Exception:
             raise Exception("Expected valid chart name. Available charts are: {}".format(
                 [elem.text for elem in availableCharts]))
-        logging.debug(
-            "Classes are: {}".format([elem.text for elem in chartNodes]))
-        # Add text to set of captured charts
-        self.chartsCaptured.add(chartNodes[0].text)
-        logging.debug(self.chartsCaptured)
-        logging.debug(chartNodes[0])
-        logging.debug("Clicking on element")
-        chartNodes[0].click()
-        try:
-            WebDriverWait(self.driver, 30).until(
-                EC.visibility_of_element_located((By.ID, "apmframe")))
-            # Switch to iframe in order to obtain DOM elements
-            self.driver.switch_to_frame(DynatracePortal.iframeName)
-            WebDriverWait(self.driver, 10).until(
-                EC.visibility_of_element_located((By.TAG_NAME, "svg")))
-        except Exception:
-            logging.warn("Element could not be found within the time frame")
-        logging.debug("Sleeping for 15 seconds")
-        time.sleep(15)
 
     def saveChartToScreenshot(self, chartName, cropChart=False, saveDir="."):
         """saveChartToScreenshot saves a screenshot of the `chartName` provided
@@ -393,7 +384,7 @@ class DynatracePortal(AbstractPortal):
             cropChart (Optional[bool]): Crop only chart section. Defaults to False
             saveDir (Optional[str]): The directory to save the screenshot. Defaults to '.'
         """
-        self._getChartPage(chartName)
+        self.getChartPage(chartName)
         imageName = "{}/{}.png".format(saveDir, chartName)
         self.driver.save_screenshot(imageName)
         if cropChart:
