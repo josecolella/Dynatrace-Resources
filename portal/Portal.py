@@ -15,13 +15,14 @@ import time
 import re
 import os
 
-__version__ = "1.0.0"
+__version__ = "1.0.1"
 __author__ = "Jose Miguel Colella"
 __email__ = "jose.colella@dynatrace.com"
 __license__ = "MIT"
 
-logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
+logging.basicConfig(
+    filename="portal.log", format='%(asctime)s:%(levelname)s:%(message)s', level=logging.DEBUG)
 
 
 class AbstractPortal(object):
@@ -290,7 +291,8 @@ class DynatracePortal(AbstractPortal):
 
     def __init__(self, username, password):
         super(DynatracePortal, self).__init__(username, password)
-        # Sets the driver to wait 10 seconds to poll the DOM. Very useful for sites like Dynatrace Portal that take a while to load elements
+        # Sets the driver to wait 10 seconds to poll the DOM. Very useful for
+        # sites like Dynatrace Portal that take a while to load elements
         self.driver.implicitly_wait(10)
         self.chartsCaptured = set()
         self.currentAccountName = self.username
@@ -337,9 +339,11 @@ class DynatracePortal(AbstractPortal):
         try:
             WebDriverWait(self.driver, 30).until(
                 EC.presence_of_element_located((By.ID, DynatracePortal.monitorAnalyzeId)))
+            logging.info(
+                "Successfully logged in with user: {}".format(self.username))
         except Exception:
             logging.warning("WARNING: The login page could not load")
-        logging.info("Sleeping for 15 seconds")
+        logging.debug("Sleeping for 15 seconds")
         time.sleep(15)
         self._saveDebugScreenshot("Login")
 
@@ -368,8 +372,8 @@ class DynatracePortal(AbstractPortal):
             chartNode = next(chartNodes)
             # Click on chart node
             chartNode.click()
-            logging.debug("Sleeping for 15 seconds")
-            time.sleep(15)
+            logging.debug("Sleeping for 20 seconds")
+            time.sleep(20)
         except Exception:
             raise Exception("Expected valid chart name. Available charts are: {}".format(
                 [elem.text for elem in availableCharts]))
@@ -389,4 +393,5 @@ class DynatracePortal(AbstractPortal):
         self.driver.save_screenshot(imageName)
         if cropChart:
             self._cropChart(imageName)
-        logging.info("Finished saving screenshot")
+        logging.info("Finished saving {chartName} screenshot to {directory} directory".format(
+            chartName=chartName, directory=saveDir))
