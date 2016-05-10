@@ -25,6 +25,6 @@ if __name__ == '__main__':
     portal.login()
     for chart in tqdm.tqdm(args.chart_names):
         portal.saveChartToScreenshot(
-            chartName=chart, cropChart=True, saveDir=args.directory)
+            chartName=chart, specificElements=["tag", "svg", "class", "gwt-ScrollTable"], saveDir=args.directory)
         tqdm.tqdm.write("Finished saving image: \"{chartName}\" screenshot to {directory} directory".format(
             chartName=chart, directory=args.directory))

@@ -309,30 +309,36 @@ class DynatracePortal(AbstractPortal):
             "down": 400
         }
 
-    def _cropChart(self, imgFile, isPerformanceMap=False):
-        chartImage = Image.open(imgFile)
+    def _cropElement(self, selectorType, selector, sourceFile, destinationFile):
+        """Allows for cropping elements from an image given a selectorType, and
+        selector as well as a destination file to save the element to.
 
-        half_the_width = chartImage.size[0] // 2
-        half_the_height = chartImage.size[1] // 2
-        if not isPerformanceMap:
-            croppedImage = chartImage.crop(
-                (
-                    half_the_width - self.croppingChartsDimension["right"],
-                    half_the_height - self.croppingChartsDimension["up"],
-                    half_the_width + self.croppingChartsDimension["left"],
-                    half_the_height + self.croppingChartsDimension["down"]
-                )
-            )
+
+        """
+        assert selectorType in {"id", "class", "name", "tag"}
+
+        if selectorType is "id":
+            elements = self.driver.find_elements_by_id(selector)
+        elif selectorType is "class":
+            elements = self.driver.find_elements_by_class_name(selector)
+        elif selectorType is "name":
+            elements = self.driver.find_elements_by_name(selector)
+        elif selectorType is "tag":
+            elements = self.driver.find_elements_by_tag_name(selector)
         else:
-            croppedImage = chartImage.crop(
-                (
-                    half_the_width - self.performanceMapDimension["right"],
-                    half_the_height - self.performanceMapDimension["up"],
-                    half_the_width + self.performanceMapDimension["left"],
-                    half_the_height + self.performanceMapDimension["down"]
-                )
-            )
-        croppedImage.save(imgFile)
+            pass
+
+        chartImage = Image.open(sourceFile)
+        for element in elements:
+            if sum(element.location.values()) is not 0 and sum(element.size.values()) is not 0:
+                left = element.location["x"]
+                top = element.location["y"]
+                right = element.location["x"] + element.size["width"]
+                bottom = element.location["y"] + element.size["height"]
+
+                croppedImage = chartImage.crop((left, top, right, bottom))
+                croppedImage.save(destinationFile)
+        chartImage.close()
 
     def login(self):
         super(DynatracePortal, self).login()
@@ -376,22 +382,27 @@ class DynatracePortal(AbstractPortal):
             time.sleep(20)
         except Exception:
             raise Exception("Expected valid chart name. Available charts are: {}".format(
-                [elem.text for elem in availableCharts]))
+                [elem.text for elem in availableCharts if elem.text != ""]))
 
-    def saveChartToScreenshot(self, chartName, cropChart=False, saveDir="."):
+    def saveChartToScreenshot(self, chartName, specificElements=[], saveDir="."):
         """saveChartToScreenshot saves a screenshot of the `chartName` provided
         as a parameter.
 
 
         Args:
             chartName (str): The name of the chart to get the screenshot
+            specificElement(list): The web element to crop
             cropChart (Optional[bool]): Crop only chart section. Defaults to False
             saveDir (Optional[str]): The directory to save the screenshot. Defaults to '.'
         """
         self.getChartPage(chartName)
-        imageName = "{}/{}.png".format(saveDir, chartName)
+        imageName = "{}/{}-uncropped.png".format(saveDir, chartName)
         self.driver.save_screenshot(imageName)
-        if cropChart:
-            self._cropChart(imageName)
-        logging.info("Finished saving {chartName} screenshot to {directory} directory".format(
-            chartName=chartName, directory=saveDir))
+        if specificElements:
+            typeSelectorList = [(specificElements[element], specificElements[element + 1]) for element in range(0, len(specificElements), 2)]
+            try:
+                for specificElement in typeSelectorList:
+                    self._cropElement(specificElement[0], specificElement[1], imageName, "{}/{}-{}.png".format(saveDir, chartName, specificElement[1]))
+                logging.info("Finished saving {chartName} screenshot to {directory} directory".format(chartName=imageName, directory=saveDir))
+            except SystemError:
+                pass
