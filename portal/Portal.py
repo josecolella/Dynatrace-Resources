@@ -1,19 +1,21 @@
 #!/usr/bin/env python3
 from __future__ import print_function
-from selenium import webdriver
-from selenium.webdriver.common.by import By
-from selenium.webdriver.support.ui import WebDriverWait
-from selenium.webdriver.support import expected_conditions as EC
-from abc import ABCMeta
-from abc import abstractmethod
-from PIL import Image
-import PortalProperties
 import datetime
 import calendar
 import logging
 import time
 import re
 import os
+import os.path
+from abc import ABCMeta
+from abc import abstractmethod
+from selenium import webdriver
+from selenium.webdriver.common.by import By
+from selenium.webdriver.support.ui import WebDriverWait
+from selenium.webdriver.support import expected_conditions as EC
+from selenium.common.exceptions import NoSuchElementException
+from PIL import Image
+import PortalProperties
 
 __version__ = "1.0.1"
 __author__ = "Jose Miguel Colella"
@@ -309,36 +311,43 @@ class DynatracePortal(AbstractPortal):
             "down": 400
         }
 
-    def _cropElement(self, selectorType, selector, sourceFile, destinationFile):
+    def _cropElement(self, selectorType, selector, sourceFile, destinationFile="output.png"):
         """Allows for cropping elements from an image given a selectorType, and
         selector as well as a destination file to save the element to.
 
-
+        Args:
+            selectorType (str): The selector type for the DOM element, e.g "id", "class", "name"
+            selector (str): The selector to be extract
+            sourceFile (str): The name of the file to crop
+            destinationFile (str[optional]): The name o
         """
         assert selectorType in {"id", "class", "name", "tag"}
+        try:
+            if selectorType is "id":
+                elements = self.driver.find_elements_by_id(selector)
+            elif selectorType is "class":
+                elements = self.driver.find_elements_by_class_name(selector)
+            elif selectorType is "name":
+                elements = self.driver.find_elements_by_name(selector)
+            elif selectorType is "tag":
+                elements = self.driver.find_elements_by_tag_name(selector)
+            else:
+                pass
 
-        if selectorType is "id":
-            elements = self.driver.find_elements_by_id(selector)
-        elif selectorType is "class":
-            elements = self.driver.find_elements_by_class_name(selector)
-        elif selectorType is "name":
-            elements = self.driver.find_elements_by_name(selector)
-        elif selectorType is "tag":
-            elements = self.driver.find_elements_by_tag_name(selector)
-        else:
-            pass
+            chartImage = Image.open(sourceFile)
+            for element in elements:
+                if sum(element.location.values()) is not 0 and sum(element.size.values()) is not 0:
+                    left = element.location["x"]
+                    top = element.location["y"]
+                    right = element.location["x"] + element.size["width"]
+                    bottom = element.location["y"] + element.size["height"]
 
-        chartImage = Image.open(sourceFile)
-        for element in elements:
-            if sum(element.location.values()) is not 0 and sum(element.size.values()) is not 0:
-                left = element.location["x"]
-                top = element.location["y"]
-                right = element.location["x"] + element.size["width"]
-                bottom = element.location["y"] + element.size["height"]
+                    croppedImage = chartImage.crop((left, top, right, bottom))
+                    croppedImage.save(destinationFile)
 
-                croppedImage = chartImage.crop((left, top, right, bottom))
-                croppedImage.save(destinationFile)
-        chartImage.close()
+            chartImage.close()
+        except NoSuchElementException:
+            raise NoSuchElementException
 
     def login(self):
         super(DynatracePortal, self).login()
@@ -357,10 +366,8 @@ class DynatracePortal(AbstractPortal):
         logging.debug("navigating to charts URL")
         self.driver.get(DynatracePortal.chartsUrl)
         try:
-            WebDriverWait(self.driver, 30).until(
-                EC.visibility_of_element_located((By.CLASS_NAME, "dataTable")))
-            # Switch to iframe in order to obtain DOM elements
-            # self.driver.switch_to_frame(DynatracePortal.iframeName)
+            WebDriverWait(self.driver, 60).until(
+                EC.invisibility_of_element_located((By.CLASS_NAME, "gwt-Image")))
         except Exception:
             logging.warn(
                 "WARNING: Element could not be found within the time frame")
@@ -370,6 +377,7 @@ class DynatracePortal(AbstractPortal):
 
     def getChartPage(self, chartName):
         self.getInteractiveCharts()
+        chartTimeoutSeconds = 60
         availableCharts = self.driver.find_elements_by_class_name(
             DynatracePortal.chartsClass)
         try:
@@ -378,6 +386,11 @@ class DynatracePortal(AbstractPortal):
             chartNode = next(chartNodes)
             # Click on chart node
             chartNode.click()
+            try:
+                wait = WebDriverWait(self.driver, chartTimeoutSeconds)
+                wait.until(EC.visibility_of_element_located((By.TAG_NAME, "svg")))
+            except Exception:
+                raise Exception("No chart element was found during {}".format(chartTimeoutSeconds))
             logging.debug("Sleeping for 20 seconds")
             time.sleep(20)
         except Exception:
@@ -399,10 +412,15 @@ class DynatracePortal(AbstractPortal):
         imageName = "{}/{}-uncropped.png".format(saveDir, chartName)
         self.driver.save_screenshot(imageName)
         if specificElements:
-            typeSelectorList = [(specificElements[element], specificElements[element + 1]) for element in range(0, len(specificElements), 2)]
+            typeSelectorList = [(specificElements[element], specificElements[
+                                 element + 1]) for element in range(0, len(specificElements), 2)]
             try:
                 for specificElement in typeSelectorList:
-                    self._cropElement(specificElement[0], specificElement[1], imageName, "{}/{}-{}.png".format(saveDir, chartName, specificElement[1]))
-                logging.info("Finished saving {chartName} screenshot to {directory} directory".format(chartName=imageName, directory=saveDir))
+                    saveFileName = "{}/{}-{}.png".format(saveDir, chartName, specificElement[1])
+                    self._cropElement(specificElement[0], specificElement[1], imageName, saveFileName)
+                logging.info("Finished saving {destination} screenshot to {directory} directory".format(
+                    destination=saveFileName, directory=saveDir))
+                if os.path.isfile(imageName):
+                    os.remove(imageName)
             except SystemError:
                 pass
